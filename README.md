@@ -1,17 +1,23 @@
 # Waypoint
 
-A full-stack JavaScript web app: a **Vite + React** client and an **Express** JSON API,
-managed as npm workspaces in one repo.
+A self-hostable, multi-user **project-management** web app. Sign in, then manage
+**projects → tasks → subtasks**. Built as a **Vite + React** client and an
+**Express + SQLite** API, managed as npm workspaces in one repo.
 
 ```
 waypoint/
 ├── client/          Vite + React frontend (JS/JSX)
 │   └── src/
+│       ├── api.js           all backend calls
+│       └── components/      AuthForm, Dashboard, TaskList, Subtasks
 ├── server/          Express API (JS)
 │   └── src/
-│       └── routes/
-├── eslint.config.js Shared ESLint (flat) config
-└── package.json     Workspace root + scripts
+│       ├── db/              SQLite connection + schema
+│       ├── models/          one module per table (plain SQL)
+│       ├── routes/          auth, projects, tasks, subtasks
+│       └── middleware/
+├── eslint.config.js
+└── package.json     workspace root + scripts
 ```
 
 ## Requirements
@@ -21,29 +27,46 @@ waypoint/
 ## Getting started
 
 ```bash
-npm install          # install all workspaces (run from the repo root)
+npm install                     # installs all workspaces (from the repo root)
 cp server/.env.example server/.env
-cp client/.env.example client/.env   # optional; defaults work in dev
-npm run dev          # client on :5173, server on :3000
+# edit server/.env — set a real SESSION_SECRET
+npm run dev                     # client :5173, server :3000
 ```
 
-Open http://localhost:5173 — the page fetches `/api/health` from the server
-(proxied by Vite in dev) and shows the API status.
+Open http://localhost:5173, register an account, and start adding projects.
+The SQLite file is created automatically at `server/data/waypoint.db`.
 
-## Scripts (run from the repo root)
+## Scripts (from the repo root)
 
 | Command | What it does |
 | --- | --- |
 | `npm run dev` | Run client and server together |
-| `npm run dev:client` / `npm run dev:server` | Run just one side |
 | `npm run build` | Production build of the client → `client/dist` |
 | `npm start` | Run the API server |
 | `npm test` | Run tests in every workspace (Vitest) |
 | `npm run lint` | ESLint over the repo |
-| `npm run format` | Prettier write (`format:check` to verify) |
+| `npm run format` | Prettier write |
+| `npm run db:migrate --workspace server` | Create/upgrade the SQLite database |
 
-## How the client talks to the server
+## Data model
 
-The client calls the API under the `/api` prefix. In development Vite proxies
-`/api` to `http://localhost:3000`, so there's no CORS or base URL to configure
-locally. For other environments, set `VITE_API_URL` in the client.
+`users` → `projects` → `tasks` → `subtasks`, each linked by a foreign key with
+`ON DELETE CASCADE`. All API queries are scoped to the logged-in user, so users
+only ever see their own data.
+
+## Auth
+
+Cookie-based sessions (`express-session`), stored in the same SQLite file.
+Passwords are hashed with `bcryptjs`. In development the Vite proxy makes the
+client and API same-origin, so login works with no extra config.
+
+## Deploying on Windows (media server)
+
+- SQLite uses `better-sqlite3`, which ships **prebuilt Windows binaries** — a
+  plain `npm install` on the server works without a C++ toolchain.
+- Set real values in `server/.env`: `NODE_ENV=production`, a long random
+  `SESSION_SECRET`, and `CLIENT_ORIGIN` if the client is served from a different
+  origin. Cookies are marked `secure` in production, so serve over HTTPS.
+- Build the client (`npm run build`) and serve `client/dist` from your web
+  server (or add static serving to Express). Run the API with `npm start`,
+  ideally under a process manager so it restarts with the machine.

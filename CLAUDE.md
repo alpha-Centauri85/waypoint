@@ -4,13 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Waypoint is a full-stack JavaScript web app organized as npm workspaces:
+Waypoint is a multi-user project-management web app: users sign in, then manage
+**projects → tasks → subtasks**. It is organized as npm workspaces:
 
 - `client/` — Vite + React frontend (plain JS/JSX)
-- `server/` — Express JSON API (plain JS)
+- `server/` — Express JSON API backed by SQLite (plain JS)
 
 Everything is ES modules (`"type": "module"`) and requires Node >= 20. There is
-no TypeScript.
+no TypeScript. Data lives in a single SQLite file (`server/data/waypoint.db`);
+sessions are stored in the same file, so there is no separate database service
+to run — this is intended to be self-hosted (e.g. on a Windows media server),
+where `npm install` fetches a prebuilt `better-sqlite3` binary.
 
 ## Commands
 
@@ -24,43 +28,73 @@ Run from the repo root unless noted.
 - `npm test` — run tests in every workspace
 - `npm run lint` — ESLint over the whole repo
 - `npm run format` / `npm run format:check` — Prettier write / verify
+- `npm run db:migrate --workspace server` — create/upgrade the SQLite file
 
 Running a single test (Vitest):
 
 - Client: `npm test --workspace client -- src/App.test.jsx`
-- Server: `npm test --workspace server -- health`
+- Server: `npm test --workspace server -- api`
 - Filter by name: append `-t "partial test name"`
 
 ## Architecture
 
-**Client ↔ server contract:** the client calls the API under the `/api` prefix.
-In dev, Vite proxies `/api` → `http://localhost:3000` (`client/vite.config.js`),
-so there's no CORS or base URL to configure locally. In other environments the
-client reads `VITE_API_URL`; the server restricts CORS to `CLIENT_ORIGIN`.
+**Client ↔ server contract:** the client calls the API under `/api`. In dev,
+Vite proxies `/api` → `http://localhost:3000` (`client/vite.config.js`), so
+requests are same-origin and the session cookie flows without CORS config. In
+other environments the client reads `VITE_API_URL`; the server restricts CORS to
+`CLIENT_ORIGIN` with `credentials: true`, and cookies become `secure` when
+`NODE_ENV=production` (so serve over HTTPS there).
 
-**Server (`server/src`):**
+**Auth & sessions:** cookie sessions via `express-session`, stored in SQLite
+(`better-sqlite3-session-store`) except under test (in-memory). Passwords are
+hashed with `bcryptjs` (pure JS — no native build). `requireAuth` guards
+protected routers by checking `req.session.userId`.
+
+**Data model (SQLite):** `users` 1—* `projects` 1—* `tasks` 1—* `subtasks`,
+each child with `ON DELETE CASCADE`. Foreign keys are enforced per-connection
+via `PRAGMA foreign_keys = ON` in `server/src/db/index.js`. **Ownership is
+enforced in every query**: project reads/writes are scoped by `user_id`, task
+queries by `project_id`, and subtask authorization joins task→project→user
+(`getTaskForUser`). Never trust an id from the URL without this scoping.
+
+**Server layout (`server/src`):**
 
 - `index.js` — entry point; only starts the HTTP listener.
-- `app.js` — builds and returns the Express app via `createApp()`. Kept separate
-  from `index.js` so tests import the app without binding a port (see
-  `server/test/health.test.js`, which drives it with supertest).
-- `config.js` — reads env (via dotenv) into a single `config` object. Read env
-  through this object, not `process.env` directly.
-- `routes/` — one router per resource, mounted under `/api/<name>` in `app.js`.
-  Add a resource by creating `routes/<name>.js` and mounting it in `createApp`.
+- `app.js` — `createApp()` wires middleware + routers and returns the app
+  (no port binding, so tests drive it with supertest).
+- `config.js` — all env read here into a `config` object, not `process.env`.
+- `db/` — `index.js` opens the connection and applies `schema.sql` on load
+  (idempotent, so prepared statements in models always have their tables);
+  `migrate.js` backs `npm run db:migrate`.
+- `models/` — one module per table; each prepares its SQL statements at import
+  time and exposes plain functions. This is the only place that touches the DB.
+- `routes/` — one router per resource, mounted in `app.js`. Nested routers
+  (`tasks`, `subtasks`) use `Router({ mergeParams: true })` and a `router.use`
+  guard that loads+authorizes the parent and attaches it to `req`.
+- `middleware/requireAuth.js` — session gate.
 
-**Client (`client/src`):**
+**Client layout (`client/src`):**
 
-- `main.jsx` — React root.
-- `App.jsx` — top-level component.
-- `api.js` — all backend fetch calls live here; components import from it rather
-  than calling `fetch` inline.
+- `api.js` — every backend call lives here (all use `credentials: 'include'`);
+  components never call `fetch` directly.
+- `App.jsx` — checks `/api/auth/me` on load; renders `AuthForm` or `Dashboard`.
+- `components/` — `AuthForm`, `Dashboard` (projects sidebar), `TaskList`,
+  `Subtasks`.
+
+## Adding features
+
+- **New resource:** add a table to `schema.sql`, a module in `models/`, a router
+  in `routes/`, mount it in `app.js`, and add calls to `client/src/api.js`.
+- **Schema changes:** `schema.sql` only uses `IF NOT EXISTS`; it does not alter
+  existing tables. For a real migration, add a versioned step rather than
+  editing table definitions in place.
 
 ## Conventions
 
 - ES module imports must include the file extension (`./app.js`, `./App.jsx`).
-- Prettier is authoritative for formatting (single quotes, semicolons, trailing
-  commas, 100 columns). Run `npm run format` before committing.
-- Tests use Vitest in both workspaces; client tests run in jsdom with Testing
-  Library. Place server tests in `server/test/`, client tests beside the code as
-  `*.test.jsx`.
+- Prettier is authoritative (single quotes, semicolons, trailing commas, 100
+  cols). Run `npm run format` before committing.
+- SQLite has no boolean type: `done` is stored as `0`/`1`.
+- Tests use Vitest. Server tests run against an in-memory DB configured in
+  `server/test/setup.js`; client tests run in jsdom with Testing Library and
+  stub `fetch`.

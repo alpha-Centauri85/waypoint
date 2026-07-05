@@ -1,26 +1,49 @@
 import { render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 import App from './App.jsx';
 
-beforeEach(() => {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(() =>
-      Promise.resolve({ ok: true, json: () => Promise.resolve({ status: 'ok' }) }),
-    ),
-  );
-});
+// Helper to fake a fetch response.
+function jsonResponse(status, body) {
+  return Promise.resolve({
+    ok: status >= 200 && status < 300,
+    status,
+    json: () => Promise.resolve(body),
+  });
+}
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-test('renders the app title', () => {
+test('shows the sign-in form when not authenticated', async () => {
+  // GET /api/auth/me → 401
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() => jsonResponse(401, { error: 'Not authenticated' })),
+  );
+
   render(<App />);
-  expect(screen.getByRole('heading', { name: /waypoint/i })).toBeInTheDocument();
+
+  expect(await screen.findByRole('heading', { name: /sign in/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /log in/i })).toBeInTheDocument();
 });
 
-test('shows the API status once loaded', async () => {
+test('shows the dashboard when authenticated', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((url) => {
+      if (String(url).endsWith('/api/auth/me')) {
+        return jsonResponse(200, { id: 1, email: 'lee@example.com' });
+      }
+      if (String(url).endsWith('/api/projects')) {
+        return jsonResponse(200, []);
+      }
+      return jsonResponse(200, []);
+    }),
+  );
+
   render(<App />);
-  expect(await screen.findByText('ok')).toBeInTheDocument();
+
+  expect(await screen.findByText('lee@example.com')).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: /projects/i })).toBeInTheDocument();
 });
