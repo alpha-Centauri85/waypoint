@@ -1,4 +1,16 @@
 import { useEffect, useState } from 'react';
+import {
+  Button,
+  Center,
+  Container,
+  Group,
+  Loader,
+  MantineProvider,
+  Text,
+  Title,
+} from '@mantine/core';
+import { Notifications } from '@mantine/notifications';
+import { LogOut } from 'lucide-react';
 import { getMe, logout } from './api.js';
 import AuthForm from './components/AuthForm.jsx';
 import Dashboard from './components/Dashboard.jsx';
@@ -19,20 +31,39 @@ export default function App() {
     setUser(null);
   }
 
-  if (loading) return <p className="app">Loading…</p>;
-
   return (
-    <div className="app">
-      <header className="app-header">
-        <h1>Waypoint</h1>
-        {user && (
-          <div className="app-user">
-            <span>{user.email}</span>
-            <button onClick={handleLogout}>Log out</button>
-          </div>
+    <MantineProvider defaultColorScheme="auto">
+      <Notifications />
+      <Container size="lg" py="md">
+        <Group justify="space-between" mb="lg">
+          <Title order={2}>Waypoint</Title>
+          {user && (
+            <Group gap="sm">
+              <Text size="sm" c="dimmed">
+                {user.email}
+              </Text>
+              <Button
+                variant="light"
+                size="xs"
+                leftSection={<LogOut size={14} />}
+                onClick={handleLogout}
+              >
+                Log out
+              </Button>
+            </Group>
+          )}
+        </Group>
+
+        {loading ? (
+          <Center h={200}>
+            <Loader />
+          </Center>
+        ) : user ? (
+          <Dashboard />
+        ) : (
+          <AuthForm onAuthed={setUser} />
         )}
-      </header>
-      {user ? <Dashboard /> : <AuthForm onAuthed={setUser} />}
-    </div>
+      </Container>
+    </MantineProvider>
   );
 }

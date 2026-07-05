@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { ActionIcon, Checkbox, Group, Stack, Text, TextInput } from '@mantine/core';
+import { Plus, Trash2 } from 'lucide-react';
 import { createSubtask, deleteSubtask, listSubtasks, updateSubtask } from '../api.js';
 
 export default function Subtasks({ taskId }) {
@@ -16,8 +18,9 @@ export default function Subtasks({ taskId }) {
 
   async function handleCreate(e) {
     e.preventDefault();
-    if (!newTitle.trim()) return;
-    await createSubtask(taskId, newTitle.trim());
+    const title = newTitle.trim();
+    if (!title) return;
+    await createSubtask(taskId, title);
     setNewTitle('');
     refresh();
   }
@@ -28,34 +31,46 @@ export default function Subtasks({ taskId }) {
   }
 
   return (
-    <div className="subtasks">
-      <ul>
-        {subtasks.map((s) => (
-          <li key={s.id}>
-            <label>
-              <input type="checkbox" checked={!!s.done} onChange={() => toggle(s)} />
-              <span className={s.done ? 'done' : ''}>{s.title}</span>
-            </label>
-            <button
-              className="link danger"
-              onClick={async () => {
-                await deleteSubtask(taskId, s.id);
-                refresh();
-              }}
-            >
-              ×
-            </button>
-          </li>
-        ))}
-      </ul>
-      <form onSubmit={handleCreate} className="new-subtask">
-        <input
-          value={newTitle}
-          onChange={(e) => setNewTitle(e.target.value)}
-          placeholder="Add subtask"
-        />
-        <button type="submit">+</button>
+    <Stack gap={4} mt="xs" ml="lg">
+      {subtasks.map((s) => (
+        <Group key={s.id} justify="space-between" gap="xs" wrap="nowrap">
+          <Checkbox
+            checked={!!s.done}
+            onChange={() => toggle(s)}
+            label={
+              <Text td={s.done ? 'line-through' : undefined} c={s.done ? 'dimmed' : undefined}>
+                {s.title}
+              </Text>
+            }
+          />
+          <ActionIcon
+            variant="subtle"
+            color="red"
+            size="sm"
+            aria-label="Delete subtask"
+            onClick={async () => {
+              await deleteSubtask(taskId, s.id);
+              refresh();
+            }}
+          >
+            <Trash2 size={14} />
+          </ActionIcon>
+        </Group>
+      ))}
+      <form onSubmit={handleCreate}>
+        <Group gap="xs" wrap="nowrap">
+          <TextInput
+            size="xs"
+            placeholder="Add subtask"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.currentTarget.value)}
+            style={{ flex: 1 }}
+          />
+          <ActionIcon type="submit" size="md" variant="light" aria-label="Add subtask">
+            <Plus size={14} />
+          </ActionIcon>
+        </Group>
       </form>
-    </div>
+    </Stack>
   );
 }

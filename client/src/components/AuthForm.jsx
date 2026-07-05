@@ -1,4 +1,15 @@
 import { useState } from 'react';
+import {
+  Alert,
+  Anchor,
+  Button,
+  Paper,
+  PasswordInput,
+  Stack,
+  Text,
+  TextInput,
+  Title,
+} from '@mantine/core';
 import { login, register } from '../api.js';
 
 export default function AuthForm({ onAuthed }) {
@@ -23,42 +34,47 @@ export default function AuthForm({ onAuthed }) {
   }
 
   return (
-    <form className="auth" onSubmit={handleSubmit}>
-      <h2>{isRegister ? 'Create an account' : 'Sign in'}</h2>
-      <label>
-        Email
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-      </label>
-      <label>
-        Password
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          minLength={8}
-          required
-        />
-      </label>
-      {error && <p className="error">{error}</p>}
-      <button type="submit">{isRegister ? 'Register' : 'Log in'}</button>
-      <p>
-        {isRegister ? 'Already have an account?' : 'Need an account?'}{' '}
-        <button
-          type="button"
-          className="link"
-          onClick={() => {
-            setMode(isRegister ? 'login' : 'register');
-            setError(null);
-          }}
-        >
-          {isRegister ? 'Sign in' : 'Register'}
-        </button>
-      </p>
-    </form>
+    <Paper maw={380} mx="auto" mt="xl" p="lg" radius="md" withBorder>
+      <form onSubmit={handleSubmit}>
+        <Stack>
+          <Title order={2}>{isRegister ? 'Create an account' : 'Sign in'}</Title>
+          <TextInput
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.currentTarget.value)}
+            required
+          />
+          <PasswordInput
+            label="Password"
+            value={password}
+            onChange={(e) => setPassword(e.currentTarget.value)}
+            minLength={8}
+            required
+          />
+          {error && (
+            <Alert color="red" variant="light">
+              {error}
+            </Alert>
+          )}
+          <Button type="submit" fullWidth>
+            {isRegister ? 'Register' : 'Log in'}
+          </Button>
+          <Text size="sm">
+            {isRegister ? 'Already have an account?' : 'Need an account?'}{' '}
+            <Anchor
+              component="button"
+              type="button"
+              onClick={() => {
+                setMode(isRegister ? 'login' : 'register');
+                setError(null);
+              }}
+            >
+              {isRegister ? 'Sign in' : 'Register'}
+            </Anchor>
+          </Text>
+        </Stack>
+      </form>
+    </Paper>
   );
 }

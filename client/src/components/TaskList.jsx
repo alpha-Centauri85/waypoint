@@ -1,8 +1,21 @@
 import { useEffect, useState } from 'react';
+import {
+  ActionIcon,
+  Badge,
+  Button,
+  Group,
+  Paper,
+  Stack,
+  Text,
+  TextInput,
+  Title,
+} from '@mantine/core';
+import { Trash2 } from 'lucide-react';
 import { createTask, deleteTask, listTasks, updateTask } from '../api.js';
 import Subtasks from './Subtasks.jsx';
 
 const STATUSES = ['todo', 'doing', 'done'];
+const STATUS_COLOR = { todo: 'gray', doing: 'blue', done: 'green' };
 
 export default function TaskList({ project }) {
   const [tasks, setTasks] = useState([]);
@@ -19,8 +32,9 @@ export default function TaskList({ project }) {
 
   async function handleCreate(e) {
     e.preventDefault();
-    if (!newTitle.trim()) return;
-    await createTask(project.id, newTitle.trim());
+    const title = newTitle.trim();
+    if (!title) return;
+    await createTask(project.id, title);
     setNewTitle('');
     refresh();
   }
@@ -32,42 +46,56 @@ export default function TaskList({ project }) {
   }
 
   return (
-    <div>
-      <h2>{project.name}</h2>
-      {project.description && <p className="muted">{project.description}</p>}
+    <Stack>
+      <div>
+        <Title order={3}>{project.name}</Title>
+        {project.description && <Text c="dimmed">{project.description}</Text>}
+      </div>
 
-      <form onSubmit={handleCreate} className="new-task">
-        <input
-          value={newTitle}
-          onChange={(e) => setNewTitle(e.target.value)}
-          placeholder="New task"
-        />
-        <button type="submit">Add task</button>
+      <form onSubmit={handleCreate}>
+        <Group gap="xs" wrap="nowrap">
+          <TextInput
+            placeholder="New task"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.currentTarget.value)}
+            style={{ flex: 1 }}
+          />
+          <Button type="submit">Add task</Button>
+        </Group>
       </form>
 
-      <ul className="tasks">
+      <Stack gap="sm">
         {tasks.map((task) => (
-          <li key={task.id} className="task">
-            <div className="task-row">
-              <button className={`status status-${task.status}`} onClick={() => cycleStatus(task)}>
-                {task.status}
-              </button>
-              <span className="task-title">{task.title}</span>
-              <button
-                className="link danger"
+          <Paper key={task.id} withBorder p="sm" radius="md">
+            <Group justify="space-between" wrap="nowrap">
+              <Group gap="sm" wrap="nowrap">
+                <Badge
+                  color={STATUS_COLOR[task.status]}
+                  variant="filled"
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => cycleStatus(task)}
+                >
+                  {task.status}
+                </Badge>
+                <Text>{task.title}</Text>
+              </Group>
+              <ActionIcon
+                variant="subtle"
+                color="red"
+                aria-label="Delete task"
                 onClick={async () => {
                   await deleteTask(project.id, task.id);
                   refresh();
                 }}
               >
-                Delete
-              </button>
-            </div>
+                <Trash2 size={16} />
+              </ActionIcon>
+            </Group>
             <Subtasks taskId={task.id} />
-          </li>
+          </Paper>
         ))}
-        {!tasks.length && <li className="muted">No tasks yet</li>}
-      </ul>
-    </div>
+        {!tasks.length && <Text c="dimmed">No tasks yet</Text>}
+      </Stack>
+    </Stack>
   );
 }

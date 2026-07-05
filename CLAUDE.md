@@ -77,9 +77,19 @@ queries by `project_id`, and subtask authorization joins task→project→user
 
 - `api.js` — every backend call lives here (all use `credentials: 'include'`);
   components never call `fetch` directly.
-- `App.jsx` — checks `/api/auth/me` on load; renders `AuthForm` or `Dashboard`.
+- `App.jsx` — wraps everything in `<MantineProvider>` + `<Notifications />`,
+  checks `/api/auth/me` on load, and renders `AuthForm` or `Dashboard`.
 - `components/` — `AuthForm`, `Dashboard` (projects sidebar), `TaskList`,
   `Subtasks`.
+
+**UI / design:** [Mantine](https://mantine.dev) v7 component library +
+`lucide-react` icons + `dayjs` (peer dep for `@mantine/dates`, used for the
+upcoming due-date picker). Build UIs from Mantine components rather than raw
+HTML/CSS; toasts go through `notifications.show(...)` from `@mantine/notifications`.
+Mantine styles are imported once in `main.jsx`; `index.css` is intentionally
+minimal. `MantineProvider` lives in `App.jsx` (not `main.jsx`) so tests that
+render `<App />` get the theme context for free. `setupTests.js` polyfills
+`matchMedia` and `ResizeObserver`, which jsdom lacks and Mantine needs.
 
 ## Adding features
 

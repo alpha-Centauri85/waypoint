@@ -43,10 +43,13 @@ middleware guards protected routes via `req.session.userId`.
 
 ## Frontend
 
-`App.jsx` checks `/auth/me` then renders login/register (`AuthForm`) or the
-`Dashboard` (projects sidebar). `TaskList` shows tasks with a click-to-cycle
-status pill (todo→doing→done); `Subtasks` are checklist items. All backend calls
-funnel through `client/src/api.js` (with `credentials: 'include'`).
+Built with the **Mantine** v7 component library + **lucide-react** icons (and
+`dayjs` for the upcoming date picker). `App.jsx` wraps everything in
+`MantineProvider` + `Notifications`, checks `/auth/me`, then renders
+login/register (`AuthForm`) or the `Dashboard` (projects sidebar). `TaskList`
+shows tasks with a click-to-cycle status badge (todo→doing→done); `Subtasks` are
+checklist items. All backend calls funnel through `client/src/api.js` (with
+`credentials: 'include'`). Auto light/dark theme via Mantine.
 
 ## What works today
 
@@ -74,6 +77,13 @@ cd ~/waypoint
 cp server/.env.example server/.env   # set a real SESSION_SECRET
 npm run dev                          # http://localhost:5173
 ```
+
+## Design foundation (installed)
+
+Mantine v7 (`@mantine/core`, `@mantine/hooks`, `@mantine/dates`,
+`@mantine/notifications`), `lucide-react`, `dayjs`. Toast infrastructure is
+wired (Notifications provider + one usage on project create). jsdom polyfills
+for `matchMedia`/`ResizeObserver` live in `client/src/setupTests.js`.
 
 ## Not yet built (see ROADMAP.md)
 

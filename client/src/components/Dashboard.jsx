@@ -1,4 +1,17 @@
 import { useEffect, useState } from 'react';
+import {
+  ActionIcon,
+  Grid,
+  Group,
+  NavLink,
+  Paper,
+  Stack,
+  Text,
+  TextInput,
+  Title,
+} from '@mantine/core';
+import { notifications } from '@mantine/notifications';
+import { Plus, Trash2 } from 'lucide-react';
 import { createProject, deleteProject, listProjects } from '../api.js';
 import TaskList from './TaskList.jsx';
 
@@ -10,25 +23,23 @@ export default function Dashboard() {
   async function refresh() {
     const rows = await listProjects();
     setProjects(rows);
-    // Keep a valid selection.
-    if (rows.length && !rows.some((p) => p.id === selectedId)) {
-      setSelectedId(rows[0].id);
-    }
-    if (!rows.length) setSelectedId(null);
+    // Keep a valid selection without depending on the current one in a closure.
+    setSelectedId((cur) => (rows.some((p) => p.id === cur) ? cur : (rows[0]?.id ?? null)));
   }
 
   useEffect(() => {
     refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleCreate(e) {
     e.preventDefault();
-    if (!newName.trim()) return;
-    const project = await createProject(newName.trim());
+    const name = newName.trim();
+    if (!name) return;
+    const project = await createProject(name);
     setNewName('');
     setSelectedId(project.id);
     refresh();
+    notifications.show({ message: `Created “${project.name}”`, color: 'green' });
   }
 
   async function handleDelete(id) {
@@ -39,38 +50,60 @@ export default function Dashboard() {
   const selected = projects.find((p) => p.id === selectedId) ?? null;
 
   return (
-    <div className="dashboard">
-      <aside className="sidebar">
-        <h2>Projects</h2>
-        <ul>
-          {projects.map((p) => (
-            <li key={p.id} className={p.id === selectedId ? 'active' : ''}>
-              <button className="link" onClick={() => setSelectedId(p.id)}>
-                {p.name}
-              </button>
-              <button className="link danger" onClick={() => handleDelete(p.id)}>
-                ×
-              </button>
-            </li>
-          ))}
-          {!projects.length && <li className="muted">No projects yet</li>}
-        </ul>
-        <form onSubmit={handleCreate} className="new-project">
-          <input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="New project name"
-          />
-          <button type="submit">Add</button>
-        </form>
-      </aside>
-      <section className="panel">
+    <Grid>
+      <Grid.Col span={{ base: 12, sm: 4, md: 3 }}>
+        <Paper withBorder p="md" radius="md">
+          <Title order={4} mb="sm">
+            Projects
+          </Title>
+          <Stack gap={2}>
+            {projects.map((p) => (
+              <Group key={p.id} justify="space-between" gap="xs" wrap="nowrap">
+                <NavLink
+                  label={p.name}
+                  active={p.id === selectedId}
+                  onClick={() => setSelectedId(p.id)}
+                  style={{ borderRadius: 6 }}
+                />
+                <ActionIcon
+                  variant="subtle"
+                  color="red"
+                  aria-label="Delete project"
+                  onClick={() => handleDelete(p.id)}
+                >
+                  <Trash2 size={16} />
+                </ActionIcon>
+              </Group>
+            ))}
+            {!projects.length && (
+              <Text c="dimmed" size="sm">
+                No projects yet
+              </Text>
+            )}
+          </Stack>
+          <form onSubmit={handleCreate}>
+            <Group gap="xs" mt="md" wrap="nowrap">
+              <TextInput
+                placeholder="New project"
+                value={newName}
+                onChange={(e) => setNewName(e.currentTarget.value)}
+                style={{ flex: 1 }}
+              />
+              <ActionIcon type="submit" variant="filled" size="lg" aria-label="Add project">
+                <Plus size={16} />
+              </ActionIcon>
+            </Group>
+          </form>
+        </Paper>
+      </Grid.Col>
+
+      <Grid.Col span={{ base: 12, sm: 8, md: 9 }}>
         {selected ? (
           <TaskList project={selected} />
         ) : (
-          <p className="muted">Create or select a project to get started.</p>
+          <Text c="dimmed">Create or select a project to get started.</Text>
         )}
-      </section>
-    </div>
+      </Grid.Col>
+    </Grid>
   );
 }
