@@ -29,6 +29,8 @@ export const getMe = () => request('/api/auth/me');
 export const listProjects = () => request('/api/projects');
 export const createProject = (name, description) =>
   request('/api/projects', { method: 'POST', body: { name, description } });
+export const updateProject = (id, fields) =>
+  request(`/api/projects/${id}`, { method: 'PATCH', body: fields });
 export const deleteProject = (id) => request(`/api/projects/${id}`, { method: 'DELETE' });
 
 // Tasks

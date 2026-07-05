@@ -53,9 +53,11 @@ checklist items. All backend calls funnel through `client/src/api.js` (with
 
 ## What works today
 
-Full auth, project CRUD, task CRUD (title + status in UI; `notes`/`due_date`/
-`position` columns exist but are **not yet used in the UI**), subtask CRUD with
-done-toggle.
+Full auth, project CRUD **incl. editing** (rename + description via
+`ProjectEditModal`), task CRUD **incl. a full edit modal** (`TaskEditModal`:
+title, status, due date, notes), subtask CRUD with done-toggle. Due dates are
+shown on task rows as a badge (red when overdue); notes surface a hover-preview
+icon. Only the `position` column remains unused (drag-reorder, step 8).
 
 ## Error handling
 
@@ -90,11 +92,13 @@ Disabled under test; limits set by `AUTH_RATE_WINDOW_MS`/`AUTH_RATE_MAX`
 
 ## Verified
 
-ESLint clean; Prettier clean; 23 passing tests (Vitest — 21 server incl. full
+ESLint clean; Prettier clean; 26 passing tests (Vitest — 23 server incl. full
 register→project→task→subtask flow, cross-user isolation, error-handling,
-validation, and security suites; 2 client); client builds; live end-to-end run
-against a real SQLite file confirmed auth/CRUD plus session persistence, helmet
-headers, and a real 429 on the 3rd rapid login.
+validation, security, and the presence-based null-clearing merge; 3 client incl.
+a TaskEditModal open→edit→PATCH flow); client builds; live end-to-end run against
+a real SQLite file confirmed auth/CRUD, editing (set/keep/clear due date+notes,
+rename project + clear description), session persistence, helmet headers, and a
+real 429 on the 3rd rapid login.
 
 ## Conventions
 
@@ -119,6 +123,6 @@ for `matchMedia`/`ResizeObserver` live in `client/src/setupTests.js`.
 
 ## Not yet built (see ROADMAP.md)
 
-Phase 0 done. Next: project/task editing UI, task notes + due-date UI,
-sorting/filtering, drag-reorder, production static serving, Windows service +
-HTTPS + backups.
+Phase 0 + Phase 1 steps 4–6 done. Next: sort/filter tasks (7), drag-reorder (8),
+UX polish (loading/empty states, progress indicators), production static serving,
+Windows service + HTTPS + backups.

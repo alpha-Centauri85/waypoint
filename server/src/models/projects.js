@@ -22,10 +22,14 @@ export function getProject(id, userId) {
   return byId.get(id, userId);
 }
 
-export function updateProject(id, userId, { name, description }) {
+export function updateProject(id, userId, fields) {
   const current = byId.get(id, userId);
   if (!current) return null;
-  update.run(name ?? current.name, description ?? current.description, id, userId);
+  // Presence-based merge so an explicit null clears the description; an omitted
+  // field is left untouched. Validation guarantees name is non-null when present.
+  const name = 'name' in fields ? fields.name : current.name;
+  const description = 'description' in fields ? fields.description : current.description;
+  update.run(name, description, id, userId);
   return byId.get(id, userId);
 }
 

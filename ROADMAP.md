@@ -31,13 +31,17 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Phase 1 — Complete core task management (the actual product)
 
-- [ ] **4. Project editing UI** (S) — rename/edit description. API
-      (`PATCH /projects/:id`) already exists; only the UI is missing.
-- [ ] **5. Task detail + editing** (M) — edit title, notes, due date. The DB
-      columns (`notes`, `due_date`) already exist but are unused in the UI.
-      _Depends on 2._
-- [ ] **6. Due dates surfaced** (M) — date picker, display due dates, highlight
-      overdue. _Depends on 5._
+- [x] **4. Project editing UI** (S) — `ProjectEditModal` (pencil icon in the
+      sidebar) renames a project and edits/clears its description via
+      `PATCH /projects/:id` (`updateProject` added to `client/src/api.js`).
+- [x] **5. Task detail + editing** (M) — `TaskEditModal` (pencil icon per task)
+      edits title, status, due date, and notes. Backend `updateTask`/
+      `updateProject` now merge by key presence, so an explicit `null` clears a
+      nullable field (due date / notes / description) while omitted fields are
+      left untouched.
+- [x] **6. Due dates surfaced** (M) — Mantine `DatePickerInput` in the task
+      modal; due dates show as a badge on each task row, highlighted red when
+      overdue (past due and not done). Notes show a hover-preview icon.
 - [ ] **7. Sort & filter tasks** (M) — by status and due date. _Depends on 6._
 - [ ] **8. Drag-to-reorder tasks** (L) — the `position` column exists but is
       never written; add a reorder endpoint + DnD in the UI. _Depends on 7._
@@ -72,5 +76,6 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Recommended next step
 
-Phase 0 is complete. Do **step 4 or 5** next — due dates and notes are already in
-the schema and just need UI, so they're fast, visible wins.
+Phase 0 done; Phase 1 steps 4–6 done (project + task editing, due dates surfaced).
+Next: **step 7 (sort & filter tasks)**, then **step 8 (drag-to-reorder)**. Or jump
+to Phase 2 polish (**step 10**, progress indicators) for a quick visible win.

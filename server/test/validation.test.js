@@ -91,6 +91,38 @@ test('a well-formed task with notes and due date is accepted', async () => {
   expect(res.body.notes).toBe('do the thing');
 });
 
+test('an explicit null clears a task due date and notes (presence-based merge)', async () => {
+  const { agent, projectId } = await agentWithProject();
+  const task = await agent
+    .post(`/api/projects/${projectId}/tasks`)
+    .send({ title: 'T', dueDate: '2026-08-01', notes: 'stuff' });
+  expect(task.body.due_date).toBe('2026-08-01');
+
+  // A status-only patch must leave the due date and notes untouched.
+  const bumped = await agent
+    .patch(`/api/projects/${projectId}/tasks/${task.body.id}`)
+    .send({ status: 'doing' });
+  expect(bumped.body.due_date).toBe('2026-08-01');
+  expect(bumped.body.notes).toBe('stuff');
+
+  // Explicit nulls clear them.
+  const cleared = await agent
+    .patch(`/api/projects/${projectId}/tasks/${task.body.id}`)
+    .send({ dueDate: null, notes: null });
+  expect(cleared.body.due_date).toBeNull();
+  expect(cleared.body.notes).toBeNull();
+});
+
+test('editing a project name and clearing its description works', async () => {
+  const { agent } = await agentWithProject();
+  const created = await agent.post('/api/projects').send({ name: 'Old', description: 'desc' });
+  const updated = await agent
+    .patch(`/api/projects/${created.body.id}`)
+    .send({ name: 'New', description: null });
+  expect(updated.body.name).toBe('New');
+  expect(updated.body.description).toBeNull();
+});
+
 test('a subtask without a title is a 400', async () => {
   const { agent, projectId } = await agentWithProject();
   const task = await agent.post(`/api/projects/${projectId}/tasks`).send({ title: 'T' });

@@ -90,8 +90,12 @@ queries by `project_id`, and subtask authorization joins task→project→user
   components never call `fetch` directly.
 - `App.jsx` — wraps everything in `<MantineProvider>` + `<Notifications />`,
   checks `/api/auth/me` on load, and renders `AuthForm` or `Dashboard`.
-- `components/` — `AuthForm`, `Dashboard` (projects sidebar), `TaskList`,
-  `Subtasks`.
+- `components/` — `AuthForm`, `Dashboard` (projects sidebar) + `ProjectEditModal`,
+  `TaskList` + `TaskEditModal` (title/status/due-date/notes), `Subtasks`. Edit
+  modals take the row being edited (or `null` when closed), seed local state from
+  it in an effect, and call an `onSaved` refresh + `onClose` after a successful
+  PATCH. Due dates use `@mantine/dates` `DatePickerInput` (Date ↔ `YYYY-MM-DD`
+  string via `dayjs`).
 
 **UI / design:** [Mantine](https://mantine.dev) v7 component library +
 `lucide-react` icons + `dayjs` (peer dep for `@mantine/dates`, used for the

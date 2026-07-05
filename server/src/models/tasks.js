@@ -40,11 +40,14 @@ export function getTaskForUser(id, userId) {
 export function updateTask(id, projectId, fields) {
   const current = byId.get(id, projectId);
   if (!current) return null;
+  // Presence-based merge (not `?? current`) so an explicit null clears a
+  // nullable field (e.g. removing a due date), while an omitted field is left
+  // untouched. Validation guarantees title/status are never null when present.
   const merged = {
-    title: fields.title ?? current.title,
-    status: fields.status ?? current.status,
-    due_date: fields.dueDate ?? current.due_date,
-    notes: fields.notes ?? current.notes,
+    title: 'title' in fields ? fields.title : current.title,
+    status: 'status' in fields ? fields.status : current.status,
+    due_date: 'dueDate' in fields ? fields.dueDate : current.due_date,
+    notes: 'notes' in fields ? fields.notes : current.notes,
   };
   update.run(merged.title, merged.status, merged.due_date, merged.notes, id, projectId);
   return byId.get(id, projectId);
