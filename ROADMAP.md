@@ -20,8 +20,14 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
       it with the coerced result (unknown keys stripped, defaults applied, emails
       trimmed + lower-cased), and throws a 400 with a readable message on failure.
       Routes no longer hand-check fields. Covered by `server/test/validation.test.js`.
-- [ ] **3. Security basics** (S) — `helmet` for headers + `express-rate-limit`
-      on `/api/auth/*` (login/register are the abuse surface).
+- [x] **3. Security basics** (S) — `helmet()` sets security response headers
+      (registered first in `app.js`); `express-rate-limit` guards the credential
+      endpoints. A `makeRateLimiter` factory + preconfigured `authLimiter`
+      (`server/src/middleware/rateLimit.js`) funnel a 429 through the central
+      error handler; applied to `POST /auth/login` + `/auth/register` only (so
+      `/me`/`/logout` stay unthrottled), disabled under test. Limits configurable
+      via `AUTH_RATE_WINDOW_MS`/`AUTH_RATE_MAX` (default 20/15min). Covered by
+      `server/test/security.test.js`.
 
 ## Phase 1 — Complete core task management (the actual product)
 
@@ -66,5 +72,5 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Recommended next step
 
-Phase 0, then **step 4 or 5** — due dates and notes are already in the schema
-and just need UI, so they're fast, visible wins.
+Phase 0 is complete. Do **step 4 or 5** next — due dates and notes are already in
+the schema and just need UI, so they're fast, visible wins.

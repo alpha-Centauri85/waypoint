@@ -14,6 +14,7 @@ export const badRequest = (message = 'Bad request') => new HttpError(400, messag
 export const unauthorized = (message = 'Not authenticated') => new HttpError(401, message);
 export const notFound = (message = 'Not found') => new HttpError(404, message);
 export const conflict = (message = 'Conflict') => new HttpError(409, message);
+export const tooManyRequests = (message = 'Too many requests') => new HttpError(429, message);
 
 // Wrap an async route handler so a rejected promise reaches the error handler.
 // (Express already forwards *synchronous* throws automatically; our current

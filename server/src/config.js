@@ -15,4 +15,9 @@ export const config = {
   dataDir,
   // The SQLite database file. ':memory:' is used by tests.
   dbPath: process.env.DB_PATH || path.join(dataDir, 'waypoint.db'),
+  // Rate limiting for the auth endpoints (brute-force / abuse surface).
+  authRateLimit: {
+    windowMs: Number(process.env.AUTH_RATE_WINDOW_MS) || 15 * 60 * 1000, // 15 min
+    max: Number(process.env.AUTH_RATE_MAX) || 20,
+  },
 };

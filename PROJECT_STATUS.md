@@ -77,12 +77,24 @@ names the offending field(s). Routes no longer hand-check inputs, so bad data is
 rejected before it reaches a model (e.g. an invalid task `status` is now a 400,
 not a DB constraint 409). Task `dueDate` must be `YYYY-MM-DD`.
 
+## Security
+
+`helmet()` sets security response headers (registered first in `app.js`;
+`X-Powered-By` removed). `express-rate-limit` guards the credential endpoints: a
+`makeRateLimiter` factory + preconfigured `authLimiter`
+(`server/src/middleware/rateLimit.js`) return a 429 (via the central error
+handler) once the limit is hit; applied to `POST /auth/login` + `/auth/register`
+only, so `/me` (called on every page load) and `/logout` stay unthrottled.
+Disabled under test; limits set by `AUTH_RATE_WINDOW_MS`/`AUTH_RATE_MAX`
+(default 20 attempts / 15 min per IP). **Phase 0 is now complete.**
+
 ## Verified
 
-ESLint clean; Prettier clean; 21 passing tests (Vitest — 19 server incl. full
-register→project→task→subtask flow, cross-user isolation, error-handling paths,
-and the new validation suite; 2 client); client builds; live end-to-end run
-against a real SQLite file confirmed auth/CRUD plus session persistence.
+ESLint clean; Prettier clean; 23 passing tests (Vitest — 21 server incl. full
+register→project→task→subtask flow, cross-user isolation, error-handling,
+validation, and security suites; 2 client); client builds; live end-to-end run
+against a real SQLite file confirmed auth/CRUD plus session persistence, helmet
+headers, and a real 429 on the 3rd rapid login.
 
 ## Conventions
 
@@ -107,6 +119,6 @@ for `matchMedia`/`ResizeObserver` live in `client/src/setupTests.js`.
 
 ## Not yet built (see ROADMAP.md)
 
-Security headers/rate limiting (Phase 0.3, next up), project/task editing UI,
-due-date UI, sorting/filtering, drag-reorder, production static serving, Windows
-service + HTTPS + backups.
+Phase 0 done. Next: project/task editing UI, task notes + due-date UI,
+sorting/filtering, drag-reorder, production static serving, Windows service +
+HTTPS + backups.

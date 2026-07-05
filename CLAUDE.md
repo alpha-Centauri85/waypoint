@@ -72,6 +72,11 @@ queries by `project_id`, and subtask authorization joins task→project→user
   (`tasks`, `subtasks`) use `Router({ mergeParams: true })` and a `router.use`
   guard that loads+authorizes the parent and attaches it to `req`.
 - `middleware/requireAuth.js` — session gate.
+- `middleware/rateLimit.js` — `express-rate-limit`. `makeRateLimiter(opts)`
+  funnels a 429 through the central error handler; the preconfigured
+  `authLimiter` guards `POST /auth/login` + `/auth/register` (the abuse surface)
+  and is skipped under test. `helmet()` (security headers) is registered first in
+  `app.js`.
 - `schemas/` — one zod (v4) module per resource. Routes pass a schema to the
   `validateBody(...)` middleware (`lib/validate.js`), which parses `req.body`,
   **replaces it** with the coerced result (unknown keys stripped, defaults

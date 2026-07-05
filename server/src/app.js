@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import session from 'express-session';
 import SqliteStoreFactory from 'better-sqlite3-session-store';
 import { config } from './config.js';
@@ -18,6 +19,9 @@ const SqliteStore = SqliteStoreFactory(session);
 export function createApp() {
   const app = express();
 
+  // Security response headers. This is a JSON API (the client is served
+  // separately in dev), so the defaults are a good fit.
+  app.use(helmet());
   app.use(cors({ origin: config.clientOrigin, credentials: true }));
   app.use(express.json());
 
