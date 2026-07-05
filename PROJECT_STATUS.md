@@ -4,7 +4,7 @@
 > speed. Keep this current as the project evolves; see `ROADMAP.md` for the plan
 > and `CLAUDE.md` for full architecture + conventions.
 
-**Last updated:** 2026-07-05
+**Last updated:** 2026-07-06
 
 ## What it is
 
@@ -66,12 +66,23 @@ registered last in `app.js`: returns clean JSON for `HttpError` (thrown via
 violations (409); unexpected errors are logged and return a generic 500 with no
 internals leaked. `asyncHandler` is available for future async routes.
 
+## Input validation
+
+All request bodies are validated with **zod** (v4). Per-resource schemas live in
+`server/src/schemas/` (`auth`, `projects`, `tasks`, `subtasks`); a single
+`validateBody(schema)` middleware (`server/src/lib/validate.js`) parses the body,
+**replaces `req.body`** with the coerced result (unknown keys stripped, defaults
+applied, strings trimmed, emails lower-cased), and throws a 400 whose message
+names the offending field(s). Routes no longer hand-check inputs, so bad data is
+rejected before it reaches a model (e.g. an invalid task `status` is now a 400,
+not a DB constraint 409). Task `dueDate` must be `YYYY-MM-DD`.
+
 ## Verified
 
-ESLint clean; 12 passing tests (Vitest — 10 server incl. full
-register→project→task→subtask flow, cross-user isolation, and error-handling
-paths; 2 client); client builds; live end-to-end run against a real SQLite file
-confirmed auth/CRUD plus session persistence.
+ESLint clean; Prettier clean; 21 passing tests (Vitest — 19 server incl. full
+register→project→task→subtask flow, cross-user isolation, error-handling paths,
+and the new validation suite; 2 client); client builds; live end-to-end run
+against a real SQLite file confirmed auth/CRUD plus session persistence.
 
 ## Conventions
 
@@ -96,6 +107,6 @@ for `matchMedia`/`ResizeObserver` live in `client/src/setupTests.js`.
 
 ## Not yet built (see ROADMAP.md)
 
-Global error handling, validation library, security headers/rate limiting,
-project/task editing UI, due-date UI, sorting/filtering, drag-reorder, production
-static serving, Windows service + HTTPS + backups.
+Security headers/rate limiting (Phase 0.3, next up), project/task editing UI,
+due-date UI, sorting/filtering, drag-reorder, production static serving, Windows
+service + HTTPS + backups.

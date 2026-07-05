@@ -38,15 +38,15 @@ The SQLite file is created automatically at `server/data/waypoint.db`.
 
 ## Scripts (from the repo root)
 
-| Command | What it does |
-| --- | --- |
-| `npm run dev` | Run client and server together |
-| `npm run build` | Production build of the client → `client/dist` |
-| `npm start` | Run the API server |
-| `npm test` | Run tests in every workspace (Vitest) |
-| `npm run lint` | ESLint over the repo |
-| `npm run format` | Prettier write |
-| `npm run db:migrate --workspace server` | Create/upgrade the SQLite database |
+| Command                                 | What it does                                   |
+| --------------------------------------- | ---------------------------------------------- |
+| `npm run dev`                           | Run client and server together                 |
+| `npm run build`                         | Production build of the client → `client/dist` |
+| `npm start`                             | Run the API server                             |
+| `npm test`                              | Run tests in every workspace (Vitest)          |
+| `npm run lint`                          | ESLint over the repo                           |
+| `npm run format`                        | Prettier write                                 |
+| `npm run db:migrate --workspace server` | Create/upgrade the SQLite database             |
 
 ## Data model
 

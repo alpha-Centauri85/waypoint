@@ -72,6 +72,12 @@ queries by `project_id`, and subtask authorization joins task→project→user
   (`tasks`, `subtasks`) use `Router({ mergeParams: true })` and a `router.use`
   guard that loads+authorizes the parent and attaches it to `req`.
 - `middleware/requireAuth.js` — session gate.
+- `schemas/` — one zod (v4) module per resource. Routes pass a schema to the
+  `validateBody(...)` middleware (`lib/validate.js`), which parses `req.body`,
+  **replaces it** with the coerced result (unknown keys stripped, defaults
+  applied, strings trimmed), and throws a 400 with a readable message on failure.
+  Handlers therefore trust `req.body` and never hand-check fields. Because
+  validation runs before models, bad input yields a 400 (not a DB-constraint 409).
 
 **Client layout (`client/src`):**
 
@@ -93,8 +99,10 @@ render `<App />` get the theme context for free. `setupTests.js` polyfills
 
 ## Adding features
 
-- **New resource:** add a table to `schema.sql`, a module in `models/`, a router
-  in `routes/`, mount it in `app.js`, and add calls to `client/src/api.js`.
+- **New resource:** add a table to `schema.sql`, a module in `models/`, a zod
+  schema in `schemas/`, a router in `routes/` (guard write routes with
+  `validateBody(schema)`), mount it in `app.js`, and add calls to
+  `client/src/api.js`.
 - **Schema changes:** `schema.sql` only uses `IF NOT EXISTS`; it does not alter
   existing tables. For a real migration, add a versioned step rather than
   editing table definitions in place.

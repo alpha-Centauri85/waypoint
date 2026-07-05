@@ -25,17 +25,29 @@ test('unknown API route returns 404 JSON', async () => {
   expect(res.body.error).toBe('Not found');
 });
 
-test('a SQLite constraint violation becomes a clean 409 (no crash)', async () => {
-  const agent = request.agent(app);
-  await agent.post('/api/auth/register').send({ email: 'c@x.com', password: 'password123' });
-  const project = await agent.post('/api/projects').send({ name: 'P' });
+test('a SQLite constraint violation becomes a clean 409 (no crash)', () => {
+  // Validation now rejects bad input before it can reach the DB, so we exercise
+  // the constraint branch directly: any error whose code starts with
+  // SQLITE_CONSTRAINT must be turned into a 409 rather than a 500.
+  const captured = {};
+  const res = {
+    status(code) {
+      captured.status = code;
+      return this;
+    },
+    json(body) {
+      captured.body = body;
+      return this;
+    },
+  };
+  const err = Object.assign(new Error('UNIQUE constraint failed'), {
+    code: 'SQLITE_CONSTRAINT_UNIQUE',
+  });
 
-  // `status` has a CHECK constraint (todo|doing|done). An invalid value must not
-  // crash the server — the error handler should turn it into a 409.
-  const res = await agent
-    .post(`/api/projects/${project.body.id}/tasks`)
-    .send({ title: 'X', status: 'bogus' });
-  expect(res.status).toBe(409);
+  errorHandler(err, {}, res, () => {});
+
+  expect(captured.status).toBe(409);
+  expect(captured.body.error).toBe('Request violates a data constraint');
 });
 
 test('unexpected errors return a generic 500 and are logged, not leaked', () => {

@@ -4,7 +4,9 @@ const insert = db.prepare('INSERT INTO projects (user_id, name, description) VAL
 const listByUser = db.prepare('SELECT * FROM projects WHERE user_id = ? ORDER BY created_at DESC');
 // Every read is scoped by user_id so users can only ever see their own rows.
 const byId = db.prepare('SELECT * FROM projects WHERE id = ? AND user_id = ?');
-const update = db.prepare('UPDATE projects SET name = ?, description = ? WHERE id = ? AND user_id = ?');
+const update = db.prepare(
+  'UPDATE projects SET name = ?, description = ? WHERE id = ? AND user_id = ?',
+);
 const del = db.prepare('DELETE FROM projects WHERE id = ? AND user_id = ?');
 
 export function createProject(userId, { name, description = null }) {

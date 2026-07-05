@@ -4,7 +4,10 @@
   "private": true,
   "type": "module",
   "description": "Waypoint — full-stack web app (Vite + React client, Express API).",
-  "workspaces": ["client", "server"],
+  "workspaces": [
+    "client",
+    "server"
+  ],
   "engines": {
     "node": ">=20"
   },

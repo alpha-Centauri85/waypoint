@@ -24,9 +24,7 @@ export default function AuthForm({ onAuthed }) {
     e.preventDefault();
     setError(null);
     try {
-      const user = isRegister
-        ? await register(email, password)
-        : await login(email, password);
+      const user = isRegister ? await register(email, password) : await login(email, password);
       onAuthed(user);
     } catch (err) {
       setError(err.message);

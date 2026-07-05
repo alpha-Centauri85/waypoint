@@ -1,14 +1,10 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/requireAuth.js';
-import { badRequest, notFound } from '../lib/errors.js';
+import { notFound } from '../lib/errors.js';
+import { validateBody } from '../lib/validate.js';
+import { createTaskSchema, updateTaskSchema } from '../schemas/tasks.js';
 import { getProject } from '../models/projects.js';
-import {
-  createTask,
-  deleteTask,
-  getTask,
-  listTasks,
-  updateTask,
-} from '../models/tasks.js';
+import { createTask, deleteTask, getTask, listTasks, updateTask } from '../models/tasks.js';
 
 // mergeParams lets this router read :projectId from the mount path.
 const router = Router({ mergeParams: true });
@@ -26,9 +22,8 @@ router.get('/', (req, res) => {
   res.json(listTasks(req.project.id));
 });
 
-router.post('/', (req, res) => {
-  const { title, status, dueDate, notes } = req.body ?? {};
-  if (!title) throw badRequest('title is required');
+router.post('/', validateBody(createTaskSchema), (req, res) => {
+  const { title, status, dueDate, notes } = req.body;
   res.status(201).json(createTask(req.project.id, { title, status, dueDate, notes }));
 });
 
@@ -38,8 +33,8 @@ router.get('/:taskId', (req, res) => {
   res.json(task);
 });
 
-router.patch('/:taskId', (req, res) => {
-  const task = updateTask(Number(req.params.taskId), req.project.id, req.body ?? {});
+router.patch('/:taskId', validateBody(updateTaskSchema), (req, res) => {
+  const task = updateTask(Number(req.params.taskId), req.project.id, req.body);
   if (!task) throw notFound('Task not found');
   res.json(task);
 });

@@ -1,13 +1,10 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/requireAuth.js';
-import { badRequest, notFound } from '../lib/errors.js';
+import { notFound } from '../lib/errors.js';
+import { validateBody } from '../lib/validate.js';
+import { createSubtaskSchema, updateSubtaskSchema } from '../schemas/subtasks.js';
 import { getTaskForUser } from '../models/tasks.js';
-import {
-  createSubtask,
-  deleteSubtask,
-  listSubtasks,
-  updateSubtask,
-} from '../models/subtasks.js';
+import { createSubtask, deleteSubtask, listSubtasks, updateSubtask } from '../models/subtasks.js';
 
 // mergeParams lets this router read :taskId from the mount path.
 const router = Router({ mergeParams: true });
@@ -25,14 +22,13 @@ router.get('/', (req, res) => {
   res.json(listSubtasks(req.task.id));
 });
 
-router.post('/', (req, res) => {
-  const { title } = req.body ?? {};
-  if (!title) throw badRequest('title is required');
+router.post('/', validateBody(createSubtaskSchema), (req, res) => {
+  const { title } = req.body;
   res.status(201).json(createSubtask(req.task.id, { title }));
 });
 
-router.patch('/:subtaskId', (req, res) => {
-  const subtask = updateSubtask(Number(req.params.subtaskId), req.task.id, req.body ?? {});
+router.patch('/:subtaskId', validateBody(updateSubtaskSchema), (req, res) => {
+  const subtask = updateSubtask(Number(req.params.subtaskId), req.task.id, req.body);
   if (!subtask) throw notFound('Subtask not found');
   res.json(subtask);
 });

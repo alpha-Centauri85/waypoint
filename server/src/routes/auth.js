@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { createUser, getUserByEmail, getUserById } from '../models/users.js';
-import { badRequest, conflict, unauthorized } from '../lib/errors.js';
+import { conflict, unauthorized } from '../lib/errors.js';
+import { validateBody } from '../lib/validate.js';
+import { registerSchema, loginSchema } from '../schemas/auth.js';
 
 const router = Router();
 
@@ -9,19 +11,16 @@ function publicUser(user) {
   return { id: user.id, email: user.email };
 }
 
-router.post('/register', (req, res) => {
-  const { email, password } = req.body ?? {};
-  if (!email || !password) throw badRequest('email and password are required');
-  if (password.length < 8) throw badRequest('password must be at least 8 characters');
+router.post('/register', validateBody(registerSchema), (req, res) => {
+  const { email, password } = req.body;
   if (getUserByEmail(email)) throw conflict('email already registered');
   const user = createUser(email, bcrypt.hashSync(password, 10));
   req.session.userId = user.id;
   res.status(201).json(publicUser(user));
 });
 
-router.post('/login', (req, res) => {
-  const { email, password } = req.body ?? {};
-  if (!email || !password) throw badRequest('email and password are required');
+router.post('/login', validateBody(loginSchema), (req, res) => {
+  const { email, password } = req.body;
   const user = getUserByEmail(email);
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
     throw unauthorized('invalid credentials');
