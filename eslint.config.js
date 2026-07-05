@@ -15,6 +15,11 @@ export default [
       sourceType: 'module',
       globals: { ...globals.node },
     },
+    rules: {
+      // Allow intentionally-unused args prefixed with _ (e.g. Express error
+      // handlers, which must declare all four parameters).
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    },
   },
 
   // Client — React in the browser

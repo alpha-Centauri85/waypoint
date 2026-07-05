@@ -4,6 +4,7 @@ import session from 'express-session';
 import SqliteStoreFactory from 'better-sqlite3-session-store';
 import { config } from './config.js';
 import { db } from './db/index.js';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import healthRouter from './routes/health.js';
 import authRouter from './routes/auth.js';
 import projectsRouter from './routes/projects.js';
@@ -47,10 +48,9 @@ export function createApp() {
   app.use('/api/projects/:projectId/tasks', tasksRouter);
   app.use('/api/tasks/:taskId/subtasks', subtasksRouter);
 
-  // 404 for unknown API routes.
-  app.use('/api', (req, res) => {
-    res.status(404).json({ error: 'Not found' });
-  });
+  // 404 for unknown API routes, then the central error handler (must be last).
+  app.use('/api', notFoundHandler);
+  app.use(errorHandler);
 
   return app;
 }

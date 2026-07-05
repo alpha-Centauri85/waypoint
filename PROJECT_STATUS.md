@@ -57,12 +57,21 @@ Full auth, project CRUD, task CRUD (title + status in UI; `notes`/`due_date`/
 `position` columns exist but are **not yet used in the UI**), subtask CRUD with
 done-toggle.
 
+## Error handling
+
+Central Express error handler (`server/src/middleware/errorHandler.js`),
+registered last in `app.js`: returns clean JSON for `HttpError` (thrown via
+`badRequest`/`notFound`/`conflict`/`unauthorized` helpers in
+`server/src/lib/errors.js`), malformed JSON (400), and SQLite constraint
+violations (409); unexpected errors are logged and return a generic 500 with no
+internals leaked. `asyncHandler` is available for future async routes.
+
 ## Verified
 
-ESLint clean; 8 passing tests (Vitest — 6 server incl. full
-register→project→task→subtask flow and cross-user isolation, 2 client); client
-builds; live end-to-end run against a real SQLite file confirmed all of the above
-plus session persistence.
+ESLint clean; 12 passing tests (Vitest — 10 server incl. full
+register→project→task→subtask flow, cross-user isolation, and error-handling
+paths; 2 client); client builds; live end-to-end run against a real SQLite file
+confirmed auth/CRUD plus session persistence.
 
 ## Conventions
 

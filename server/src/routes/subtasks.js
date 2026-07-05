@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/requireAuth.js';
+import { badRequest, notFound } from '../lib/errors.js';
 import { getTaskForUser } from '../models/tasks.js';
 import {
   createSubtask,
@@ -15,7 +16,7 @@ router.use(requireAuth);
 // Authorize the parent task (must belong to a project owned by the user).
 router.use((req, res, next) => {
   const task = getTaskForUser(Number(req.params.taskId), req.session.userId);
-  if (!task) return res.status(404).json({ error: 'Task not found' });
+  if (!task) throw notFound('Task not found');
   req.task = task;
   next();
 });
@@ -26,19 +27,19 @@ router.get('/', (req, res) => {
 
 router.post('/', (req, res) => {
   const { title } = req.body ?? {};
-  if (!title) return res.status(400).json({ error: 'title is required' });
+  if (!title) throw badRequest('title is required');
   res.status(201).json(createSubtask(req.task.id, { title }));
 });
 
 router.patch('/:subtaskId', (req, res) => {
   const subtask = updateSubtask(Number(req.params.subtaskId), req.task.id, req.body ?? {});
-  if (!subtask) return res.status(404).json({ error: 'Subtask not found' });
+  if (!subtask) throw notFound('Subtask not found');
   res.json(subtask);
 });
 
 router.delete('/:subtaskId', (req, res) => {
   const ok = deleteSubtask(Number(req.params.subtaskId), req.task.id);
-  if (!ok) return res.status(404).json({ error: 'Subtask not found' });
+  if (!ok) throw notFound('Subtask not found');
   res.status(204).end();
 });
 

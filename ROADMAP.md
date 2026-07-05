@@ -7,9 +7,13 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Phase 0 — Harden the foundation (do first; cheap, prevents rework)
 
-- [ ] **1. Global error handler + async safety** (S) — one Express
-  error-handling middleware so thrown errors return clean JSON, not stack
-  traces. Everything after this leans on it.
+- [x] **1. Global error handler + async safety** (S) — central `errorHandler`
+  (`server/src/middleware/errorHandler.js`) returns clean JSON for known
+  (`HttpError`), malformed-JSON, and SQLite-constraint errors, and a generic 500
+  (logged, no internals leaked) for anything else. `HttpError` helpers +
+  `asyncHandler` live in `server/src/lib/errors.js`; routes now `throw`
+  `badRequest`/`notFound`/`conflict`/`unauthorized` instead of hand-writing
+  responses. Covered by `server/test/error-handling.test.js`.
 - [ ] **2. Input validation layer** (M) — adopt `zod` (or similar) and validate
   request bodies in one place; current checks are manual/inconsistent. Set this
   pattern before adding more endpoints.
