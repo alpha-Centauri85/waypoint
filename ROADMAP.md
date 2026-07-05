@@ -42,7 +42,11 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
 - [x] **6. Due dates surfaced** (M) — Mantine `DatePickerInput` in the task
       modal; due dates show as a badge on each task row, highlighted red when
       overdue (past due and not done). Notes show a hover-preview icon.
-- [ ] **7. Sort & filter tasks** (M) — by status and due date. _Depends on 6._
+- [x] **7. Sort & filter tasks** (M) — status filter (SegmentedControl: all/todo/
+      doing/done) + sort (manual/due date/status/title) in `TaskList`, applied
+      client-side by a pure `arrangeTasks(tasks, statusFilter, sortBy)` helper
+      (due dates sort chronologically, no-due-date last; non-mutating). Covered by
+      `client/src/components/TaskList.test.jsx`.
 - [ ] **8. Drag-to-reorder tasks** (L) — the `position` column exists but is
       never written; add a reorder endpoint + DnD in the UI. _Depends on 7._
 
@@ -76,6 +80,7 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Recommended next step
 
-Phase 0 done; Phase 1 steps 4–6 done (project + task editing, due dates surfaced).
-Next: **step 7 (sort & filter tasks)**, then **step 8 (drag-to-reorder)**. Or jump
-to Phase 2 polish (**step 10**, progress indicators) for a quick visible win.
+Phase 0 done; Phase 1 steps 4–7 done (project + task editing, due dates surfaced,
+sort & filter). Next: **step 8 (drag-to-reorder tasks)** — the last core task
+feature and the only remaining use of the `position` column. Or jump to Phase 2
+polish (**step 10**, progress indicators) for a quicker visible win.
