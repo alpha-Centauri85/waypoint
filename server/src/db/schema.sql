@@ -25,9 +25,29 @@ CREATE TABLE IF NOT EXISTS tasks (
   due_date   TEXT,
   notes      TEXT,
   position   INTEGER NOT NULL DEFAULT 0,
+  priority   INTEGER NOT NULL DEFAULT 0, -- 0 none · 1 low · 2 medium · 3 high · 4 urgent
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);
+
+-- Per-user label library (reusable across all the user's projects) and the
+-- many-to-many link to tasks.
+CREATE TABLE IF NOT EXISTS labels (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name       TEXT NOT NULL,
+  color      TEXT NOT NULL DEFAULT 'teal',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (user_id, name)
+);
+CREATE INDEX IF NOT EXISTS idx_labels_user ON labels(user_id);
+
+CREATE TABLE IF NOT EXISTS task_labels (
+  task_id  INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  label_id INTEGER NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
+  PRIMARY KEY (task_id, label_id)
+);
+CREATE INDEX IF NOT EXISTS idx_task_labels_label ON task_labels(label_id);
 
 CREATE TABLE IF NOT EXISTS subtasks (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,

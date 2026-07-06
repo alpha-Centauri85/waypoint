@@ -4,6 +4,7 @@ import { DatePickerInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import dayjs from 'dayjs';
 import { updateTask } from '../api.js';
+import { PRIORITY_OPTIONS } from '../priority.js';
 
 const STATUS_OPTIONS = [
   { value: 'todo', label: 'To do' },
@@ -16,6 +17,7 @@ const STATUS_OPTIONS = [
 export default function TaskEditModal({ project, task, opened, onClose, onSaved }) {
   const [title, setTitle] = useState('');
   const [status, setStatus] = useState('todo');
+  const [priority, setPriority] = useState(0);
   const [dueDate, setDueDate] = useState(null); // Date | null
   const [notes, setNotes] = useState('');
   const [error, setError] = useState(null);
@@ -26,6 +28,7 @@ export default function TaskEditModal({ project, task, opened, onClose, onSaved 
     if (!task) return;
     setTitle(task.title);
     setStatus(task.status);
+    setPriority(task.priority ?? 0);
     setDueDate(task.due_date ? dayjs(task.due_date).toDate() : null);
     setNotes(task.notes ?? '');
     setError(null);
@@ -43,6 +46,7 @@ export default function TaskEditModal({ project, task, opened, onClose, onSaved 
       await updateTask(project.id, task.id, {
         title: trimmed,
         status,
+        priority,
         // null clears the field; the backend merges by key presence.
         dueDate: dueDate ? dayjs(dueDate).format('YYYY-MM-DD') : null,
         notes: notes.trim() || null,
@@ -68,13 +72,22 @@ export default function TaskEditModal({ project, task, opened, onClose, onSaved 
             required
             data-autofocus
           />
-          <Select
-            label="Status"
-            data={STATUS_OPTIONS}
-            value={status}
-            onChange={(v) => setStatus(v ?? 'todo')}
-            allowDeselect={false}
-          />
+          <Group grow align="flex-start">
+            <Select
+              label="Status"
+              data={STATUS_OPTIONS}
+              value={status}
+              onChange={(v) => setStatus(v ?? 'todo')}
+              allowDeselect={false}
+            />
+            <Select
+              label="Priority"
+              data={PRIORITY_OPTIONS}
+              value={String(priority)}
+              onChange={(v) => setPriority(Number(v ?? 0))}
+              allowDeselect={false}
+            />
+          </Group>
           <DatePickerInput
             label="Due date"
             placeholder="No due date"

@@ -16,10 +16,19 @@ import {
   Title,
   Tooltip,
 } from '@mantine/core';
-import { ArrowUpDown, CalendarClock, FileText, GripVertical, Pencil, Trash2 } from 'lucide-react';
+import {
+  ArrowUpDown,
+  CalendarClock,
+  FileText,
+  Flag,
+  GripVertical,
+  Pencil,
+  Trash2,
+} from 'lucide-react';
 import dayjs from 'dayjs';
 import { createTask, deleteTask, listTasks, reorderTasks, updateTask } from '../api.js';
 import { notifyError } from '../notify.js';
+import { PRIORITY_META } from '../priority.js';
 import Subtasks from './Subtasks.jsx';
 import TaskEditModal from './TaskEditModal.jsx';
 
@@ -36,6 +45,7 @@ const STATUS_FILTERS = [
 
 const SORT_OPTIONS = [
   { value: 'default', label: 'Manual order' },
+  { value: 'priority', label: 'Priority' },
   { value: 'due', label: 'Due date' },
   { value: 'status', label: 'Status' },
   { value: 'title', label: 'Title' },
@@ -59,6 +69,8 @@ export function arrangeTasks(tasks, statusFilter, sortBy) {
       if (!b.due_date) return -1;
       return a.due_date < b.due_date ? -1 : 1;
     });
+  } else if (sortBy === 'priority') {
+    sorted.sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0)); // urgent first
   } else if (sortBy === 'status') {
     sorted.sort((a, b) => STATUSES.indexOf(a.status) - STATUSES.indexOf(b.status));
   } else if (sortBy === 'title') {
@@ -290,6 +302,18 @@ export default function TaskList({ project, onTasksChanged }) {
                     </Badge>
                   </Tooltip>
                   <Text truncate>{task.title}</Text>
+                  {task.priority > 0 && (
+                    <Tooltip label={`${PRIORITY_META[task.priority].label} priority`}>
+                      <Flag
+                        size={14}
+                        style={{
+                          flexShrink: 0,
+                          color: `var(--mantine-color-${PRIORITY_META[task.priority].color}-5)`,
+                          fill: `var(--mantine-color-${PRIORITY_META[task.priority].color}-5)`,
+                        }}
+                      />
+                    </Tooltip>
+                  )}
                   {task.notes && (
                     <Tooltip label={task.notes} multiline maw={280}>
                       <FileText size={15} style={{ flexShrink: 0, opacity: 0.6 }} />
