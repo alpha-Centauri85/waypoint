@@ -152,6 +152,9 @@ for `matchMedia`/`ResizeObserver` live in `client/src/setupTests.js`.
 
 ## Not yet built (see ROADMAP.md)
 
-Phases 0 + 1 done. Next: Phase 2 UX polish (loading/empty/error states + toasts,
-progress indicators, optimistic UI), then Phase 3 deploy (production static
-serving, Windows service + HTTPS + backups).
+Phases 0 + 1 + brand design + Phase 2 (9–10) done. Phase 3: single-origin
+production serving ✅ and WAL-safe backups (`npm run db:backup`, git-ignored
+`server/data/`) ✅. Remaining: Windows service (13) + HTTPS reverse proxy (14) —
+host-specific setup on the media server. Then the expanded product roadmap
+(views, reporting/dashboards, labels, search, comments, sharing) or step 11
+(optimistic UI).
