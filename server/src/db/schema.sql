@@ -17,9 +17,23 @@ CREATE TABLE IF NOT EXISTS projects (
 );
 CREATE INDEX IF NOT EXISTS idx_projects_user ON projects(user_id);
 
+-- Named groupings of tasks within a project ("sections"). Defined before tasks
+-- so tasks can reference it. See docs/labels-sections-templates.md.
+CREATE TABLE IF NOT EXISTS sections (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name       TEXT NOT NULL,
+  position   INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_sections_project ON sections(project_id);
+
 CREATE TABLE IF NOT EXISTS tasks (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  -- Optional grouping; NULL means "ungrouped". Deleting a section ungroups its
+  -- tasks rather than deleting them.
+  section_id INTEGER REFERENCES sections(id) ON DELETE SET NULL,
   title      TEXT NOT NULL,
   status     TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'doing', 'done')),
   due_date   TEXT,
@@ -29,6 +43,8 @@ CREATE TABLE IF NOT EXISTS tasks (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);
+-- idx_tasks_section is created in db/index.js after section_id is ensured, so it
+-- works on databases whose tasks table predates the column.
 
 -- Per-user label library (reusable across all the user's projects) and the
 -- many-to-many link to tasks.

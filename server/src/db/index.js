@@ -31,3 +31,8 @@ function ensureColumn(table, column, definition) {
   if (!exists) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
 }
 ensureColumn('tasks', 'priority', 'INTEGER NOT NULL DEFAULT 0');
+// section_id is added after `sections` is created by the schema above, so the
+// referenced table exists when the column is added to an older tasks table.
+ensureColumn('tasks', 'section_id', 'INTEGER REFERENCES sections(id) ON DELETE SET NULL');
+// Index created here (not in schema.sql) so it runs after the column exists.
+db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_section ON tasks(section_id)');

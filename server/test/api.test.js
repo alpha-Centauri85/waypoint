@@ -78,10 +78,16 @@ test('tasks can be reordered and new tasks append to the end', async () => {
   list = await agent.get(`/api/projects/${pid}/tasks`);
   expect(list.body.map((t) => t.title)).toEqual(['C', 'A', 'B']);
 
-  // A partial/foreign id set is rejected as a 400.
+  // A subset is allowed (e.g. reordering one section's tasks).
+  const subset = await agent
+    .patch(`/api/projects/${pid}/tasks/reorder`)
+    .send({ orderedIds: [b.id, a.id] });
+  expect(subset.status).toBe(200);
+
+  // A foreign id (not in this project) is rejected as a 400.
   const bad = await agent
     .patch(`/api/projects/${pid}/tasks/reorder`)
-    .send({ orderedIds: [a.id, b.id] });
+    .send({ orderedIds: [a.id, 999999] });
   expect(bad.status).toBe(400);
 });
 

@@ -15,10 +15,11 @@ const STATUS_OPTIONS = [
 
 // Modal for editing a task's title, status, due date, and notes. `task` is the
 // row being edited (or null when closed); on save it PATCHes and calls onSaved.
-export default function TaskEditModal({ project, task, opened, onClose, onSaved }) {
+export default function TaskEditModal({ project, task, sections = [], opened, onClose, onSaved }) {
   const [title, setTitle] = useState('');
   const [status, setStatus] = useState('todo');
   const [priority, setPriority] = useState(0);
+  const [sectionId, setSectionId] = useState(null);
   const [dueDate, setDueDate] = useState(null); // Date | null
   const [notes, setNotes] = useState('');
   const [labelIds, setLabelIds] = useState([]);
@@ -31,6 +32,7 @@ export default function TaskEditModal({ project, task, opened, onClose, onSaved 
     setTitle(task.title);
     setStatus(task.status);
     setPriority(task.priority ?? 0);
+    setSectionId(task.section_id ?? null);
     setDueDate(task.due_date ? dayjs(task.due_date).toDate() : null);
     setNotes(task.notes ?? '');
     setLabelIds((task.labels ?? []).map((l) => l.id));
@@ -50,6 +52,7 @@ export default function TaskEditModal({ project, task, opened, onClose, onSaved 
         title: trimmed,
         status,
         priority,
+        sectionId,
         labelIds,
         // null clears the field; the backend merges by key presence.
         dueDate: dueDate ? dayjs(dueDate).format('YYYY-MM-DD') : null,
@@ -92,6 +95,16 @@ export default function TaskEditModal({ project, task, opened, onClose, onSaved 
               allowDeselect={false}
             />
           </Group>
+          {sections.length > 0 && (
+            <Select
+              label="Section"
+              placeholder="No section"
+              clearable
+              data={sections.map((s) => ({ value: String(s.id), label: s.name }))}
+              value={sectionId ? String(sectionId) : null}
+              onChange={(v) => setSectionId(v ? Number(v) : null)}
+            />
+          )}
           <DatePickerInput
             label="Due date"
             placeholder="No due date"

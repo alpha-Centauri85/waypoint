@@ -6,7 +6,6 @@ import {
   Center,
   Group,
   Loader,
-  Paper,
   Progress,
   SegmentedControl,
   Select,
@@ -14,27 +13,24 @@ import {
   Text,
   TextInput,
   Title,
-  Tooltip,
 } from '@mantine/core';
+import { ArrowUpDown, Check, Pencil, Plus, Trash2, X } from 'lucide-react';
 import {
-  ArrowUpDown,
-  CalendarClock,
-  FileText,
-  Flag,
-  GripVertical,
-  Pencil,
-  Trash2,
-} from 'lucide-react';
-import dayjs from 'dayjs';
-import { createTask, deleteTask, listTasks, reorderTasks, updateTask } from '../api.js';
+  createSection,
+  createTask,
+  deleteSection,
+  deleteTask,
+  listSections,
+  listTasks,
+  reorderTasks,
+  updateSection,
+  updateTask,
+} from '../api.js';
 import { notifyError } from '../notify.js';
-import { PRIORITY_META } from '../priority.js';
-import Subtasks from './Subtasks.jsx';
+import TaskCard from './TaskCard.jsx';
 import TaskEditModal from './TaskEditModal.jsx';
 
 const STATUSES = ['todo', 'doing', 'done'];
-const STATUS_COLOR = { todo: 'gray', doing: 'amber', done: 'teal' };
-const STATUS_LABEL = { todo: 'To do', doing: 'In progress', done: 'Done' };
 
 const STATUS_FILTERS = [
   { label: 'All', value: 'all' },
@@ -50,11 +46,6 @@ const SORT_OPTIONS = [
   { value: 'status', label: 'Status' },
   { value: 'title', label: 'Title' },
 ];
-
-// A task is overdue when its due date is in the past and it isn't done yet.
-function isOverdue(task) {
-  return task.due_date && task.status !== 'done' && dayjs(task.due_date).isBefore(dayjs(), 'day');
-}
 
 // Apply the current status filter and sort. Due dates are ISO strings
 // (YYYY-MM-DD), which sort chronologically as plain strings; tasks without a due
@@ -92,10 +83,17 @@ export function moveTask(tasks, draggedId, targetId) {
   return next;
 }
 
+// Same section? (both null = ungrouped). Guards drag reordering to one group.
+const sameSection = (a, b) => (a.section_id ?? null) === (b.section_id ?? null);
+
 export default function TaskList({ project, onTasksChanged }) {
   const [tasks, setTasks] = useState([]);
+  const [sections, setSections] = useState([]);
   const [newTitle, setNewTitle] = useState('');
+  const [newSectionName, setNewSectionName] = useState('');
   const [editingTask, setEditingTask] = useState(null);
+  const [editingSectionId, setEditingSectionId] = useState(null);
+  const [editingSectionName, setEditingSectionName] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('default');
   const [draggedId, setDraggedId] = useState(null);
@@ -116,7 +114,9 @@ export default function TaskList({ project, onTasksChanged }) {
 
   async function refresh() {
     try {
-      setTasks(await listTasks(project.id));
+      const [t, s] = await Promise.all([listTasks(project.id), listSections(project.id)]);
+      setTasks(t);
+      setSections(s);
     } catch (err) {
       notifyError(err, 'Could not load tasks');
     } finally {
@@ -124,25 +124,10 @@ export default function TaskList({ project, onTasksChanged }) {
     }
   }
 
-  // Refetch tasks and let the parent refresh its per-project progress rollups.
+  // Refetch and let the parent refresh its per-project progress rollups.
   async function refreshAll() {
     await refresh();
     onTasksChanged?.();
-  }
-
-  function handleDrop(targetId) {
-    const next = moveTask(tasks, draggedId, targetId);
-    setDraggedId(null);
-    setDragOverId(null);
-    if (next === tasks) return;
-    setTasks(next); // optimistic; revert by refetching if the server rejects it
-    reorderTasks(
-      project.id,
-      next.map((t) => t.id),
-    ).catch((err) => {
-      notifyError(err, 'Could not reorder tasks');
-      refresh();
-    });
   }
 
   useEffect(() => {
@@ -151,13 +136,12 @@ export default function TaskList({ project, onTasksChanged }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project.id]);
 
-  async function handleCreate(e) {
-    e.preventDefault();
-    const title = newTitle.trim();
-    if (!title) return;
+  // --- tasks ---
+  async function addTask(title, sectionId = null) {
+    const trimmed = title.trim();
+    if (!trimmed) return;
     try {
-      await createTask(project.id, title);
-      setNewTitle('');
+      await createTask(project.id, trimmed, sectionId ? { sectionId } : {});
       refreshAll();
     } catch (err) {
       notifyError(err, 'Could not add task');
@@ -174,7 +158,7 @@ export default function TaskList({ project, onTasksChanged }) {
     }
   }
 
-  async function handleDelete(task) {
+  async function removeTask(task) {
     try {
       await deleteTask(project.id, task.id);
       refreshAll();
@@ -182,6 +166,101 @@ export default function TaskList({ project, onTasksChanged }) {
       notifyError(err, 'Could not delete task');
     }
   }
+
+  // --- sections ---
+  async function addSection(e) {
+    e.preventDefault();
+    const name = newSectionName.trim();
+    if (!name) return;
+    try {
+      await createSection(project.id, name);
+      setNewSectionName('');
+      refresh();
+    } catch (err) {
+      notifyError(err, 'Could not add section');
+    }
+  }
+
+  async function saveSectionName() {
+    const name = editingSectionName.trim();
+    const id = editingSectionId;
+    setEditingSectionId(null);
+    if (!name) return;
+    try {
+      await updateSection(project.id, id, { name });
+      refresh();
+    } catch (err) {
+      notifyError(err, 'Could not rename section');
+    }
+  }
+
+  async function removeSection(section) {
+    try {
+      await deleteSection(project.id, section.id);
+      refreshAll(); // tasks become ungrouped
+    } catch (err) {
+      notifyError(err, 'Could not delete section');
+    }
+  }
+
+  // --- drag reorder (within a single section only) ---
+  function dragPropsFor(task) {
+    return {
+      dragging: draggedId === task.id,
+      dragOver: dragOverId === task.id && draggedId !== task.id,
+      onDragStart: () => setDraggedId(task.id),
+      onDragEnd: () => {
+        setDraggedId(null);
+        setDragOverId(null);
+      },
+      onDragOver: (e) => {
+        if (!reorderEnabled || draggedId === null) return;
+        const dragged = tasks.find((t) => t.id === draggedId);
+        if (!dragged || !sameSection(dragged, task)) return; // same group only
+        e.preventDefault();
+        if (dragOverId !== task.id) setDragOverId(task.id);
+      },
+      onDrop: (e) => {
+        e.preventDefault();
+        dropOn(task);
+      },
+    };
+  }
+
+  function dropOn(target) {
+    const dragged = tasks.find((t) => t.id === draggedId);
+    setDraggedId(null);
+    setDragOverId(null);
+    if (!dragged || dragged.id === target.id || !sameSection(dragged, target)) return;
+    const group = tasks.filter((t) => sameSection(t, target));
+    const next = moveTask(group, dragged.id, target.id);
+    if (next === group) return;
+    // Rebuild the full list, substituting the group's new order in place.
+    const iter = next[Symbol.iterator]();
+    const full = tasks.map((t) => (sameSection(t, target) ? iter.next().value : t));
+    setTasks(full); // optimistic; refetch reverts on failure
+    reorderTasks(
+      project.id,
+      next.map((t) => t.id),
+    ).catch((err) => {
+      notifyError(err, 'Could not reorder tasks');
+      refresh();
+    });
+  }
+
+  const renderTask = (task) => (
+    <TaskCard
+      key={task.id}
+      task={task}
+      reorderEnabled={reorderEnabled}
+      drag={dragPropsFor(task)}
+      onCycle={() => cycleStatus(task)}
+      onEdit={() => setEditingTask(task)}
+      onDelete={() => removeTask(task)}
+    />
+  );
+
+  const ungrouped = visibleTasks.filter((t) => (t.section_id ?? null) === null);
 
   return (
     <Stack>
@@ -209,7 +288,7 @@ export default function TaskList({ project, onTasksChanged }) {
         )}
       </Group>
 
-      <form onSubmit={handleCreate}>
+      <form onSubmit={(e) => (e.preventDefault(), addTask(newTitle), setNewTitle(''))}>
         <Group gap="xs" wrap="nowrap">
           <TextInput
             placeholder="New task"
@@ -242,144 +321,181 @@ export default function TaskList({ project, onTasksChanged }) {
         </Group>
       )}
 
-      <Stack gap="sm">
-        {loading &&
-          [0, 1, 2].map((i) => (
-            <Paper key={`sk-${i}`} withBorder p="sm" radius="md" style={{ opacity: 0.5 }}>
-              <Center h={28}>{i === 0 ? <Loader size="sm" color="teal" /> : null}</Center>
-            </Paper>
-          ))}
-        {!loading &&
-          visibleTasks.map((task) => (
-            <Paper
-              key={task.id}
-              withBorder
-              p="sm"
-              radius="md"
-              draggable={reorderEnabled}
-              onDragStart={() => setDraggedId(task.id)}
-              onDragEnd={() => {
-                setDraggedId(null);
-                setDragOverId(null);
-              }}
-              onDragOver={(e) => {
-                if (!reorderEnabled || draggedId === null) return;
-                e.preventDefault();
-                if (dragOverId !== task.id) setDragOverId(task.id);
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                handleDrop(task.id);
-              }}
-              style={{
-                opacity: draggedId === task.id ? 0.4 : 1,
-                borderTop:
-                  dragOverId === task.id && draggedId !== task.id
-                    ? '2px solid var(--mantine-primary-color-filled)'
-                    : undefined,
-              }}
-            >
-              <Group justify="space-between" wrap="nowrap">
-                <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
-                  {reorderEnabled && (
-                    <Tooltip label="Drag to reorder" openDelay={400}>
-                      <GripVertical
-                        size={16}
-                        aria-label="Drag handle"
-                        style={{ cursor: 'grab', flexShrink: 0, opacity: 0.5 }}
-                      />
-                    </Tooltip>
-                  )}
-                  <Tooltip label="Click to change status" openDelay={400}>
-                    <Badge
-                      color={STATUS_COLOR[task.status]}
-                      variant={task.status === 'todo' ? 'light' : 'filled'}
-                      w={92}
-                      style={{ cursor: 'pointer', flexShrink: 0 }}
-                      onClick={() => cycleStatus(task)}
-                    >
-                      {STATUS_LABEL[task.status]}
-                    </Badge>
-                  </Tooltip>
-                  <Text truncate>{task.title}</Text>
-                  {task.priority > 0 && (
-                    <Tooltip label={`${PRIORITY_META[task.priority].label} priority`}>
-                      <Flag
-                        size={14}
-                        style={{
-                          flexShrink: 0,
-                          color: `var(--mantine-color-${PRIORITY_META[task.priority].color}-5)`,
-                          fill: `var(--mantine-color-${PRIORITY_META[task.priority].color}-5)`,
-                        }}
-                      />
-                    </Tooltip>
-                  )}
-                  {task.notes && (
-                    <Tooltip label={task.notes} multiline maw={280}>
-                      <FileText size={15} style={{ flexShrink: 0, opacity: 0.6 }} />
-                    </Tooltip>
-                  )}
-                  {task.due_date && (
-                    <Badge
+      {loading && (
+        <Center py="xl">
+          <Loader color="teal" />
+        </Center>
+      )}
+
+      {!loading && (
+        <Stack gap="lg">
+          {/* Sections, in order */}
+          {sections.map((section) => {
+            const items = visibleTasks.filter((t) => t.section_id === section.id);
+            return (
+              <Stack key={section.id} gap="xs">
+                {editingSectionId === section.id ? (
+                  <Group gap="xs" wrap="nowrap">
+                    <TextInput
+                      size="sm"
+                      style={{ flex: 1 }}
+                      value={editingSectionName}
+                      onChange={(e) => setEditingSectionName(e.currentTarget.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveSectionName();
+                        if (e.key === 'Escape') setEditingSectionId(null);
+                      }}
+                      autoFocus
+                    />
+                    <ActionIcon
                       variant="light"
-                      color={isOverdue(task) ? 'red' : 'gray'}
-                      leftSection={<CalendarClock size={12} />}
-                      style={{ flexShrink: 0 }}
+                      aria-label="Save section name"
+                      onClick={saveSectionName}
                     >
-                      {dayjs(task.due_date).format('MMM D')}
-                    </Badge>
-                  )}
-                  {(task.labels ?? []).map((label) => (
-                    <Badge
-                      key={label.id}
-                      variant="dot"
-                      color={label.color}
-                      style={{ flexShrink: 0 }}
+                      <Check size={16} />
+                    </ActionIcon>
+                    <ActionIcon
+                      variant="subtle"
+                      color="gray"
+                      aria-label="Cancel"
+                      onClick={() => setEditingSectionId(null)}
                     >
-                      {label.name}
-                    </Badge>
-                  ))}
-                </Group>
-                <Group gap={4} wrap="nowrap">
-                  <ActionIcon
-                    variant="subtle"
-                    aria-label="Edit task"
-                    onClick={() => setEditingTask(task)}
+                      <X size={16} />
+                    </ActionIcon>
+                  </Group>
+                ) : (
+                  <Group
+                    justify="space-between"
+                    gap="xs"
+                    style={{
+                      borderBottom: '1px solid var(--mantine-color-dark-4)',
+                      paddingBottom: 6,
+                    }}
                   >
-                    <Pencil size={16} />
-                  </ActionIcon>
-                  <ActionIcon
-                    variant="subtle"
-                    color="red"
-                    aria-label="Delete task"
-                    onClick={() => handleDelete(task)}
-                  >
-                    <Trash2 size={16} />
-                  </ActionIcon>
-                </Group>
-              </Group>
-              <Subtasks taskId={task.id} />
-            </Paper>
-          ))}
-        {!loading && !tasks.length && (
-          <Text c="dark.2" py="sm">
-            No tasks yet — add your first one above.
-          </Text>
-        )}
-        {!loading && tasks.length > 0 && !visibleTasks.length && (
-          <Text c="dark.2" py="sm">
-            No tasks match this filter.
-          </Text>
-        )}
-      </Stack>
+                    <Group gap="xs">
+                      <Text fw={700} tt="uppercase" size="sm" style={{ letterSpacing: '0.04em' }}>
+                        {section.name}
+                      </Text>
+                      <Badge size="sm" variant="light" color="gray">
+                        {items.length}
+                      </Badge>
+                    </Group>
+                    <Group gap={4}>
+                      <ActionIcon
+                        variant="subtle"
+                        color="gray"
+                        size="sm"
+                        aria-label="Rename section"
+                        onClick={() => {
+                          setEditingSectionId(section.id);
+                          setEditingSectionName(section.name);
+                        }}
+                      >
+                        <Pencil size={14} />
+                      </ActionIcon>
+                      <ActionIcon
+                        variant="subtle"
+                        color="red"
+                        size="sm"
+                        aria-label="Delete section"
+                        onClick={() => removeSection(section)}
+                      >
+                        <Trash2 size={14} />
+                      </ActionIcon>
+                    </Group>
+                  </Group>
+                )}
+
+                {items.map(renderTask)}
+                {!items.length && (
+                  <Text size="sm" c="dark.3" pl="xs">
+                    No tasks in this section.
+                  </Text>
+                )}
+                <SectionAddTask onAdd={(title) => addTask(title, section.id)} />
+              </Stack>
+            );
+          })}
+
+          {/* Ungrouped tasks (shown under a header only when sections exist) */}
+          {sections.length > 0 && ungrouped.length > 0 && (
+            <Text fw={700} tt="uppercase" size="sm" c="dark.2" style={{ letterSpacing: '0.04em' }}>
+              No section
+            </Text>
+          )}
+          <Stack gap="sm">{ungrouped.map(renderTask)}</Stack>
+
+          {!tasks.length && (
+            <Text c="dark.2" py="sm">
+              No tasks yet — add your first one above.
+            </Text>
+          )}
+          {tasks.length > 0 && !visibleTasks.length && (
+            <Text c="dark.2" py="sm">
+              No tasks match this filter.
+            </Text>
+          )}
+
+          {/* Add a section */}
+          <form onSubmit={addSection}>
+            <Group gap="xs" wrap="nowrap" maw={360}>
+              <TextInput
+                size="xs"
+                placeholder="New section"
+                value={newSectionName}
+                onChange={(e) => setNewSectionName(e.currentTarget.value)}
+                style={{ flex: 1 }}
+                leftSection={<Plus size={14} />}
+              />
+              <Button type="submit" size="xs" variant="light">
+                Add section
+              </Button>
+            </Group>
+          </form>
+        </Stack>
+      )}
 
       <TaskEditModal
         project={project}
         task={editingTask}
+        sections={sections}
         opened={!!editingTask}
         onClose={() => setEditingTask(null)}
         onSaved={refreshAll}
       />
     </Stack>
+  );
+}
+
+// Inline "add task to this section" form with its own input state.
+function SectionAddTask({ onAdd }) {
+  const [title, setTitle] = useState('');
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        onAdd(title);
+        setTitle('');
+      }}
+    >
+      <Group gap="xs" wrap="nowrap">
+        <TextInput
+          size="xs"
+          placeholder="Add task to this section"
+          value={title}
+          onChange={(e) => setTitle(e.currentTarget.value)}
+          style={{ flex: 1 }}
+        />
+        <ActionIcon
+          type="submit"
+          size="md"
+          variant="subtle"
+          color="gray"
+          aria-label="Add task to section"
+        >
+          <Plus size={16} />
+        </ActionIcon>
+      </Group>
+    </form>
   );
 }

@@ -40,6 +40,7 @@ middleware guards protected routes via `req.session.userId`.
 - `GET/POST /projects`, `GET/PATCH/DELETE /projects/:id`
 - `GET/POST /projects/:projectId/tasks`, `GET/PATCH/DELETE /projects/:projectId/tasks/:taskId`
 - `PATCH /projects/:projectId/tasks/reorder` (body `{ orderedIds }`)
+- `GET/POST /projects/:projectId/sections`, `PATCH/DELETE .../sections/:id`, `PATCH .../sections/reorder`
 - `GET/POST /labels`, `PATCH/DELETE /labels/:id`
 - `GET/POST /tasks/:taskId/subtasks`, `PATCH/DELETE /tasks/:taskId/subtasks/:subtaskId`
 
@@ -72,6 +73,14 @@ from the task edit modal (`LabelPicker`), embedded in task responses, and shown
 as colored chips on rows. Labels are first-class entities (stable ids) — the
 foundation for future templates/modules. Open follow-ups: filter-by-label and a
 label management UI.
+
+**Sections (task grouping):** projects can have **sections** (`sections` +
+nullable `tasks.section_id`; deleting a section ungroups its tasks). The task
+view renders grouped under section headers (inline rename/delete, per-section
+add-task, a "No section" group, add-section control); the task modal has a
+Section select; task drag-reorder is scoped within a section. This is the
+structural base for modules/templates (see `docs/labels-sections-templates.md`).
+Follow-ups: drag to reorder sections, and drag tasks across sections.
 
 ## Error handling
 
