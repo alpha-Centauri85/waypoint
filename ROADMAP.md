@@ -108,6 +108,12 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
       section's area), and **drag section headers to reorder** — all persisted and
       optimistic. Covered by `server/test/sections.test.js` +
       `client/src/components/TaskList.test.jsx` (within- and cross-section drag).
+- [x] **Board (Kanban) view** — a List/Board toggle per project (`TaskList`);
+      the board (`TaskBoard.jsx`) shows status columns (To do / In progress /
+      Done) with counts. Cards are compact (title + priority/notes/due/labels) and
+      open the edit modal on click; dragging a card to a column sets that status.
+      Covered by a board drag test in `TaskList.test.jsx`. _Follow-up:_ section
+      swimlanes on the board.
 - [ ] **17. Search**
 - [ ] **18. Comments / activity log**
 - [ ] **19. Project sharing (multi-user collaboration)**

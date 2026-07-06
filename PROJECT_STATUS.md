@@ -92,6 +92,11 @@ as template" (project actions menu) + a "Start from a template" picker in the
 sidebar. Follow-ups: a dedicated module/template editor and carrying
 labels/due-dates into blueprints.
 
+**Board (Kanban) view:** a List/Board toggle per project. The board shows status
+columns (To do / In progress / Done) with counts; compact cards (priority, due,
+labels, notes) open the edit modal on click; dragging a card between columns
+changes its status (`TaskBoard.jsx`). Follow-up: section swimlanes.
+
 ## Error handling
 
 Central Express error handler (`server/src/middleware/errorHandler.js`),

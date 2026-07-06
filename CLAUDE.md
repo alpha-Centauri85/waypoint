@@ -114,8 +114,10 @@ queries by `project_id`, and subtask authorization joins task→project→user
 - `components/` — `AuthForm`, `Dashboard` (projects sidebar) + `ProjectEditModal`,
   `TaskList` (status filter / sort via the pure `arrangeTasks` helper; native
   HTML5 drag-reorder via the pure `moveTask` helper + `PATCH .../tasks/reorder`,
-  optimistic, enabled only in Manual-order + All view) + `TaskEditModal`
-  (title/status/due-date/notes), `Subtasks`. Edit
+  optimistic, enabled only in Manual-order + All view) with a **List/Board view
+  toggle** (`TaskBoard.jsx` = Kanban status columns; drag a card to change
+  status) + `TaskEditModal` (title/status/priority/section/due-date/notes/labels),
+  `TaskCard`, `Subtasks`. Edit
   modals take the row being edited (or `null` when closed), seed local state from
   it in an effect, and call an `onSaved` refresh + `onClose` after a successful
   PATCH. Due dates use `@mantine/dates` `DatePickerInput` (Date ↔ `YYYY-MM-DD`

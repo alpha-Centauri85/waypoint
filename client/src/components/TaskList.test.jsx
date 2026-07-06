@@ -224,6 +224,57 @@ test('dragging a task into another section PATCHes its sectionId and reorders', 
   });
 });
 
+test('board view: dragging a card to another column changes its status', async () => {
+  const tasks = [
+    {
+      id: 1,
+      title: 'Card A',
+      status: 'todo',
+      due_date: null,
+      notes: null,
+      section_id: null,
+      labels: [],
+    },
+    {
+      id: 2,
+      title: 'Card B',
+      status: 'doing',
+      due_date: null,
+      notes: null,
+      section_id: null,
+      labels: [],
+    },
+  ];
+  const calls = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((url, opts = {}) => {
+      calls.push({ url: String(url), opts });
+      if (String(url).includes('/subtasks')) return jsonResponse(200, []);
+      if (String(url).includes('/sections')) return jsonResponse(200, []);
+      if (String(url).endsWith('/tasks')) return jsonResponse(200, tasks);
+      return jsonResponse(200, tasks);
+    }),
+  );
+
+  renderWithProviders(<TaskList project={{ id: 1, name: 'P' }} />);
+  // Switch to board view.
+  fireEvent.click(await screen.findByRole('radio', { name: 'Board' }));
+
+  const cardA = (await screen.findByText('Card A')).closest('[draggable="true"]');
+  const doneColumn = screen.getByLabelText('Done column');
+
+  fireEvent.dragStart(cardA);
+  fireEvent.dragOver(doneColumn);
+  fireEvent.drop(doneColumn);
+
+  await waitFor(() => {
+    const patch = calls.find((c) => c.opts.method === 'PATCH' && c.url.endsWith('/tasks/1'));
+    expect(patch).toBeTruthy();
+    expect(JSON.parse(patch.opts.body)).toEqual({ status: 'done' });
+  });
+});
+
 test('the status filter hides non-matching tasks in the list', async () => {
   const tasks = [
     { id: 1, title: 'A todo task', status: 'todo', due_date: null, notes: null },
