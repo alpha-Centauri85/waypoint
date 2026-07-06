@@ -1,7 +1,18 @@
 import { db } from '../db/index.js';
 
 const insert = db.prepare('INSERT INTO projects (user_id, name, description) VALUES (?, ?, ?)');
-const listByUser = db.prepare('SELECT * FROM projects WHERE user_id = ? ORDER BY created_at DESC');
+// Include task rollups (total + done) so the UI can show per-project progress
+// without an extra request per project.
+const listByUser = db.prepare(`
+  SELECT p.*,
+    COUNT(t.id) AS task_count,
+    COALESCE(SUM(CASE WHEN t.status = 'done' THEN 1 ELSE 0 END), 0) AS done_count
+  FROM projects p
+  LEFT JOIN tasks t ON t.project_id = p.id
+  WHERE p.user_id = ?
+  GROUP BY p.id
+  ORDER BY p.created_at DESC
+`);
 // Every read is scoped by user_id so users can only ever see their own rows.
 const byId = db.prepare('SELECT * FROM projects WHERE id = ? AND user_id = ?');
 const update = db.prepare(

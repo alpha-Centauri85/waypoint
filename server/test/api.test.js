@@ -85,6 +85,18 @@ test('tasks can be reordered and new tasks append to the end', async () => {
   expect(bad.status).toBe(400);
 });
 
+test('project list includes task_count and done_count rollups', async () => {
+  const agent = request.agent(app);
+  await agent.post('/api/auth/register').send({ email: 'roll@x.com', password: 'password123' });
+  const project = await agent.post('/api/projects').send({ name: 'Rollup' });
+  const pid = project.body.id;
+  await agent.post(`/api/projects/${pid}/tasks`).send({ title: 'one', status: 'done' });
+  await agent.post(`/api/projects/${pid}/tasks`).send({ title: 'two' });
+
+  const list = await agent.get('/api/projects');
+  expect(list.body[0]).toMatchObject({ task_count: 2, done_count: 1 });
+});
+
 test('users cannot see each other’s projects', async () => {
   const alice = request.agent(app);
   await alice.post('/api/auth/register').send({ email: 'alice@x.com', password: 'password123' });

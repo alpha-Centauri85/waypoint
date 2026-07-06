@@ -3,8 +3,11 @@ import {
   ActionIcon,
   Badge,
   Button,
+  Center,
   Group,
+  Loader,
   Paper,
+  Progress,
   SegmentedControl,
   Select,
   Stack,
@@ -16,6 +19,7 @@ import {
 import { ArrowUpDown, CalendarClock, FileText, GripVertical, Pencil, Trash2 } from 'lucide-react';
 import dayjs from 'dayjs';
 import { createTask, deleteTask, listTasks, reorderTasks, updateTask } from '../api.js';
+import { notifyError } from '../notify.js';
 import Subtasks from './Subtasks.jsx';
 import TaskEditModal from './TaskEditModal.jsx';
 
@@ -76,7 +80,7 @@ export function moveTask(tasks, draggedId, targetId) {
   return next;
 }
 
-export default function TaskList({ project }) {
+export default function TaskList({ project, onTasksChanged }) {
   const [tasks, setTasks] = useState([]);
   const [newTitle, setNewTitle] = useState('');
   const [editingTask, setEditingTask] = useState(null);
@@ -84,18 +88,34 @@ export default function TaskList({ project }) {
   const [sortBy, setSortBy] = useState('default');
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const visibleTasks = useMemo(
     () => arrangeTasks(tasks, statusFilter, sortBy),
     [tasks, statusFilter, sortBy],
   );
 
+  const doneCount = tasks.filter((t) => t.status === 'done').length;
+  const pct = tasks.length ? Math.round((doneCount / tasks.length) * 100) : 0;
+
   // Reordering only makes sense when the list reflects the stored manual order
   // (no filter hiding rows, no other sort overriding it).
   const reorderEnabled = statusFilter === 'all' && sortBy === 'default';
 
   async function refresh() {
-    setTasks(await listTasks(project.id));
+    try {
+      setTasks(await listTasks(project.id));
+    } catch (err) {
+      notifyError(err, 'Could not load tasks');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Refetch tasks and let the parent refresh its per-project progress rollups.
+  async function refreshAll() {
+    await refresh();
+    onTasksChanged?.();
   }
 
   function handleDrop(targetId) {
@@ -107,10 +127,14 @@ export default function TaskList({ project }) {
     reorderTasks(
       project.id,
       next.map((t) => t.id),
-    ).catch(refresh);
+    ).catch((err) => {
+      notifyError(err, 'Could not reorder tasks');
+      refresh();
+    });
   }
 
   useEffect(() => {
+    setLoading(true);
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project.id]);
@@ -119,27 +143,59 @@ export default function TaskList({ project }) {
     e.preventDefault();
     const title = newTitle.trim();
     if (!title) return;
-    await createTask(project.id, title);
-    setNewTitle('');
-    refresh();
+    try {
+      await createTask(project.id, title);
+      setNewTitle('');
+      refreshAll();
+    } catch (err) {
+      notifyError(err, 'Could not add task');
+    }
   }
 
   async function cycleStatus(task) {
     const next = STATUSES[(STATUSES.indexOf(task.status) + 1) % STATUSES.length];
-    await updateTask(project.id, task.id, { status: next });
-    refresh();
+    try {
+      await updateTask(project.id, task.id, { status: next });
+      refreshAll();
+    } catch (err) {
+      notifyError(err, 'Could not update task');
+    }
+  }
+
+  async function handleDelete(task) {
+    try {
+      await deleteTask(project.id, task.id);
+      refreshAll();
+    } catch (err) {
+      notifyError(err, 'Could not delete task');
+    }
   }
 
   return (
     <Stack>
-      <div>
-        <Title order={2}>{project.name}</Title>
-        {project.description && (
-          <Text c="dark.2" mt={4}>
-            {project.description}
-          </Text>
+      <Group justify="space-between" align="flex-start" wrap="nowrap">
+        <div>
+          <Title order={2}>{project.name}</Title>
+          {project.description && (
+            <Text c="dark.2" mt={4}>
+              {project.description}
+            </Text>
+          )}
+        </div>
+        {tasks.length > 0 && (
+          <Stack gap={4} w={180} style={{ flexShrink: 0 }}>
+            <Group justify="space-between" gap="xs">
+              <Text size="xs" c="dark.2">
+                {doneCount} of {tasks.length} done
+              </Text>
+              <Text size="xs" fw={600} c={pct === 100 ? 'teal.4' : 'dark.1'}>
+                {pct}%
+              </Text>
+            </Group>
+            <Progress value={pct} color={pct === 100 ? 'teal' : 'amber'} size="md" radius="xl" />
+          </Stack>
         )}
-      </div>
+      </Group>
 
       <form onSubmit={handleCreate}>
         <Group gap="xs" wrap="nowrap">
@@ -175,101 +231,111 @@ export default function TaskList({ project }) {
       )}
 
       <Stack gap="sm">
-        {visibleTasks.map((task) => (
-          <Paper
-            key={task.id}
-            withBorder
-            p="sm"
-            radius="md"
-            draggable={reorderEnabled}
-            onDragStart={() => setDraggedId(task.id)}
-            onDragEnd={() => {
-              setDraggedId(null);
-              setDragOverId(null);
-            }}
-            onDragOver={(e) => {
-              if (!reorderEnabled || draggedId === null) return;
-              e.preventDefault();
-              if (dragOverId !== task.id) setDragOverId(task.id);
-            }}
-            onDrop={(e) => {
-              e.preventDefault();
-              handleDrop(task.id);
-            }}
-            style={{
-              opacity: draggedId === task.id ? 0.4 : 1,
-              borderTop:
-                dragOverId === task.id && draggedId !== task.id
-                  ? '2px solid var(--mantine-primary-color-filled)'
-                  : undefined,
-            }}
-          >
-            <Group justify="space-between" wrap="nowrap">
-              <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
-                {reorderEnabled && (
-                  <Tooltip label="Drag to reorder" openDelay={400}>
-                    <GripVertical
-                      size={16}
-                      aria-label="Drag handle"
-                      style={{ cursor: 'grab', flexShrink: 0, opacity: 0.5 }}
-                    />
+        {loading &&
+          [0, 1, 2].map((i) => (
+            <Paper key={`sk-${i}`} withBorder p="sm" radius="md" style={{ opacity: 0.5 }}>
+              <Center h={28}>{i === 0 ? <Loader size="sm" color="teal" /> : null}</Center>
+            </Paper>
+          ))}
+        {!loading &&
+          visibleTasks.map((task) => (
+            <Paper
+              key={task.id}
+              withBorder
+              p="sm"
+              radius="md"
+              draggable={reorderEnabled}
+              onDragStart={() => setDraggedId(task.id)}
+              onDragEnd={() => {
+                setDraggedId(null);
+                setDragOverId(null);
+              }}
+              onDragOver={(e) => {
+                if (!reorderEnabled || draggedId === null) return;
+                e.preventDefault();
+                if (dragOverId !== task.id) setDragOverId(task.id);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                handleDrop(task.id);
+              }}
+              style={{
+                opacity: draggedId === task.id ? 0.4 : 1,
+                borderTop:
+                  dragOverId === task.id && draggedId !== task.id
+                    ? '2px solid var(--mantine-primary-color-filled)'
+                    : undefined,
+              }}
+            >
+              <Group justify="space-between" wrap="nowrap">
+                <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
+                  {reorderEnabled && (
+                    <Tooltip label="Drag to reorder" openDelay={400}>
+                      <GripVertical
+                        size={16}
+                        aria-label="Drag handle"
+                        style={{ cursor: 'grab', flexShrink: 0, opacity: 0.5 }}
+                      />
+                    </Tooltip>
+                  )}
+                  <Tooltip label="Click to change status" openDelay={400}>
+                    <Badge
+                      color={STATUS_COLOR[task.status]}
+                      variant={task.status === 'todo' ? 'light' : 'filled'}
+                      w={92}
+                      style={{ cursor: 'pointer', flexShrink: 0 }}
+                      onClick={() => cycleStatus(task)}
+                    >
+                      {STATUS_LABEL[task.status]}
+                    </Badge>
                   </Tooltip>
-                )}
-                <Tooltip label="Click to change status" openDelay={400}>
-                  <Badge
-                    color={STATUS_COLOR[task.status]}
-                    variant={task.status === 'todo' ? 'light' : 'filled'}
-                    w={92}
-                    style={{ cursor: 'pointer', flexShrink: 0 }}
-                    onClick={() => cycleStatus(task)}
+                  <Text truncate>{task.title}</Text>
+                  {task.notes && (
+                    <Tooltip label={task.notes} multiline maw={280}>
+                      <FileText size={15} style={{ flexShrink: 0, opacity: 0.6 }} />
+                    </Tooltip>
+                  )}
+                  {task.due_date && (
+                    <Badge
+                      variant="light"
+                      color={isOverdue(task) ? 'red' : 'gray'}
+                      leftSection={<CalendarClock size={12} />}
+                      style={{ flexShrink: 0 }}
+                    >
+                      {dayjs(task.due_date).format('MMM D')}
+                    </Badge>
+                  )}
+                </Group>
+                <Group gap={4} wrap="nowrap">
+                  <ActionIcon
+                    variant="subtle"
+                    aria-label="Edit task"
+                    onClick={() => setEditingTask(task)}
                   >
-                    {STATUS_LABEL[task.status]}
-                  </Badge>
-                </Tooltip>
-                <Text truncate>{task.title}</Text>
-                {task.notes && (
-                  <Tooltip label={task.notes} multiline maw={280}>
-                    <FileText size={15} style={{ flexShrink: 0, opacity: 0.6 }} />
-                  </Tooltip>
-                )}
-                {task.due_date && (
-                  <Badge
-                    variant="light"
-                    color={isOverdue(task) ? 'red' : 'gray'}
-                    leftSection={<CalendarClock size={12} />}
-                    style={{ flexShrink: 0 }}
+                    <Pencil size={16} />
+                  </ActionIcon>
+                  <ActionIcon
+                    variant="subtle"
+                    color="red"
+                    aria-label="Delete task"
+                    onClick={() => handleDelete(task)}
                   >
-                    {dayjs(task.due_date).format('MMM D')}
-                  </Badge>
-                )}
+                    <Trash2 size={16} />
+                  </ActionIcon>
+                </Group>
               </Group>
-              <Group gap={4} wrap="nowrap">
-                <ActionIcon
-                  variant="subtle"
-                  aria-label="Edit task"
-                  onClick={() => setEditingTask(task)}
-                >
-                  <Pencil size={16} />
-                </ActionIcon>
-                <ActionIcon
-                  variant="subtle"
-                  color="red"
-                  aria-label="Delete task"
-                  onClick={async () => {
-                    await deleteTask(project.id, task.id);
-                    refresh();
-                  }}
-                >
-                  <Trash2 size={16} />
-                </ActionIcon>
-              </Group>
-            </Group>
-            <Subtasks taskId={task.id} />
-          </Paper>
-        ))}
-        {!tasks.length && <Text c="dimmed">No tasks yet</Text>}
-        {tasks.length > 0 && !visibleTasks.length && (
-          <Text c="dimmed">No tasks match this filter</Text>
+              <Subtasks taskId={task.id} />
+            </Paper>
+          ))}
+        {!loading && !tasks.length && (
+          <Text c="dark.2" py="sm">
+            No tasks yet — add your first one above.
+          </Text>
+        )}
+        {!loading && tasks.length > 0 && !visibleTasks.length && (
+          <Text c="dark.2" py="sm">
+            No tasks match this filter.
+          </Text>
         )}
       </Stack>
 
@@ -278,7 +344,7 @@ export default function TaskList({ project }) {
         task={editingTask}
         opened={!!editingTask}
         onClose={() => setEditingTask(null)}
-        onSaved={refresh}
+        onSaved={refreshAll}
       />
     </Stack>
   );

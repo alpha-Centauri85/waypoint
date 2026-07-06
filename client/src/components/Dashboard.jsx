@@ -5,7 +5,9 @@ import {
   Center,
   Grid,
   Group,
+  Loader,
   Paper,
+  Progress,
   Stack,
   Text,
   TextInput,
@@ -14,6 +16,7 @@ import {
 import { notifications } from '@mantine/notifications';
 import { FolderKanban, Pencil, Plus, Trash2 } from 'lucide-react';
 import { createProject, deleteProject, listProjects } from '../api.js';
+import { notifyError } from '../notify.js';
 import TaskList from './TaskList.jsx';
 import ProjectEditModal from './ProjectEditModal.jsx';
 
@@ -22,12 +25,19 @@ export default function Dashboard() {
   const [selectedId, setSelectedId] = useState(null);
   const [newName, setNewName] = useState('');
   const [editingProject, setEditingProject] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   async function refresh() {
-    const rows = await listProjects();
-    setProjects(rows);
-    // Keep a valid selection without depending on the current one in a closure.
-    setSelectedId((cur) => (rows.some((p) => p.id === cur) ? cur : (rows[0]?.id ?? null)));
+    try {
+      const rows = await listProjects();
+      setProjects(rows);
+      // Keep a valid selection without depending on the current one in a closure.
+      setSelectedId((cur) => (rows.some((p) => p.id === cur) ? cur : (rows[0]?.id ?? null)));
+    } catch (err) {
+      notifyError(err, 'Could not load projects');
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -38,16 +48,24 @@ export default function Dashboard() {
     e.preventDefault();
     const name = newName.trim();
     if (!name) return;
-    const project = await createProject(name);
-    setNewName('');
-    setSelectedId(project.id);
-    refresh();
-    notifications.show({ message: `Created “${project.name}”`, color: 'teal' });
+    try {
+      const project = await createProject(name);
+      setNewName('');
+      setSelectedId(project.id);
+      refresh();
+      notifications.show({ message: `Created “${project.name}”`, color: 'teal' });
+    } catch (err) {
+      notifyError(err, 'Could not create project');
+    }
   }
 
   async function handleDelete(id) {
-    await deleteProject(id);
-    refresh();
+    try {
+      await deleteProject(id);
+      refresh();
+    } catch (err) {
+      notifyError(err, 'Could not delete project');
+    }
   }
 
   const selected = projects.find((p) => p.id === selectedId) ?? null;
@@ -67,17 +85,23 @@ export default function Dashboard() {
             </Group>
 
             <Stack gap={4}>
-              {projects.map((p) => (
-                <ProjectRow
-                  key={p.id}
-                  project={p}
-                  active={p.id === selectedId}
-                  onSelect={() => setSelectedId(p.id)}
-                  onEdit={() => setEditingProject(p)}
-                  onDelete={() => handleDelete(p.id)}
-                />
-              ))}
-              {!projects.length && (
+              {loading ? (
+                <Center py="lg">
+                  <Loader size="sm" color="teal" />
+                </Center>
+              ) : (
+                projects.map((p) => (
+                  <ProjectRow
+                    key={p.id}
+                    project={p}
+                    active={p.id === selectedId}
+                    onSelect={() => setSelectedId(p.id)}
+                    onEdit={() => setEditingProject(p)}
+                    onDelete={() => handleDelete(p.id)}
+                  />
+                ))
+              )}
+              {!loading && !projects.length && (
                 <Text c="dark.2" size="sm" py="xs">
                   No projects yet. Add your first one below.
                 </Text>
@@ -101,7 +125,11 @@ export default function Dashboard() {
         </Grid.Col>
 
         <Grid.Col span={{ base: 12, sm: 8, md: 9 }}>
-          {selected ? <TaskList project={selected} /> : <EmptyState />}
+          {selected ? (
+            <TaskList project={selected} onTasksChanged={refresh} />
+          ) : (
+            !loading && <EmptyState />
+          )}
         </Grid.Col>
       </Grid>
 
@@ -116,53 +144,72 @@ export default function Dashboard() {
 }
 
 function ProjectRow({ project, active, onSelect, onEdit, onDelete }) {
+  const total = project.task_count ?? 0;
+  const done = project.done_count ?? 0;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  const complete = total > 0 && done === total;
+
   return (
-    <Group
-      gap={4}
-      wrap="nowrap"
+    <Stack
+      gap={6}
       onClick={onSelect}
       style={{
         cursor: 'pointer',
         borderRadius: 8,
-        padding: '6px 8px 6px 10px',
+        padding: '8px 8px 10px 10px',
         backgroundColor: active ? 'var(--mantine-color-dark-5)' : 'transparent',
         borderLeft: active ? '3px solid var(--mantine-color-teal-5)' : '3px solid transparent',
       }}
     >
-      <Text
-        size="sm"
-        fw={active ? 600 : 400}
-        c={active ? 'white' : 'dark.1'}
-        truncate
-        style={{ flex: 1 }}
-      >
-        {project.name}
-      </Text>
-      <ActionIcon
-        variant="subtle"
-        color="gray"
-        size="sm"
-        aria-label="Edit project"
-        onClick={(e) => {
-          e.stopPropagation();
-          onEdit();
-        }}
-      >
-        <Pencil size={14} />
-      </ActionIcon>
-      <ActionIcon
-        variant="subtle"
-        color="red"
-        size="sm"
-        aria-label="Delete project"
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-      >
-        <Trash2 size={14} />
-      </ActionIcon>
-    </Group>
+      <Group gap={4} wrap="nowrap">
+        <Text
+          size="sm"
+          fw={active ? 600 : 400}
+          c={active ? 'white' : 'dark.1'}
+          truncate
+          style={{ flex: 1 }}
+        >
+          {project.name}
+        </Text>
+        <ActionIcon
+          variant="subtle"
+          color="gray"
+          size="sm"
+          aria-label="Edit project"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit();
+          }}
+        >
+          <Pencil size={14} />
+        </ActionIcon>
+        <ActionIcon
+          variant="subtle"
+          color="red"
+          size="sm"
+          aria-label="Delete project"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+        >
+          <Trash2 size={14} />
+        </ActionIcon>
+      </Group>
+      <Group gap={8} wrap="nowrap" pr={4}>
+        <Progress
+          value={total ? pct : 0}
+          color={complete ? 'teal' : 'amber'}
+          size="sm"
+          radius="xl"
+          style={{ flex: 1 }}
+          aria-label={`${done} of ${total} tasks done`}
+        />
+        <Text size="xs" c="dark.2" style={{ fontVariantNumeric: 'tabular-nums' }}>
+          {total ? `${done}/${total}` : '—'}
+        </Text>
+      </Group>
+    </Stack>
   );
 }
 

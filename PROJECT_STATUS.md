@@ -128,6 +128,13 @@ dark-only navy UI, teal primary + amber secondary, Satoshi (display) + Inter
 Auth, sidebar, task cards, status pills (todo=gray / doing=amber / done=teal),
 and modals are all restyled to brand. Verified via headless-Chromium screenshots.
 
+**UX polish (Phase 2):** per-project progress bars in the sidebar + an "X of Y
+done / %" summary in the task header (backed by `task_count`/`done_count`
+rollups on `GET /projects`, kept live via an `onTasksChanged` callback); first-
+load loaders and branded empty states; and every mutation surfaces failures via
+`notifyError` toasts instead of failing silently. Drag-reorder is optimistic;
+other actions refetch (step 11 optimistic UI still open).
+
 ## Design foundation (installed)
 
 Mantine v7 (`@mantine/core`, `@mantine/hooks`, `@mantine/dates`,

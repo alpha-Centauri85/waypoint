@@ -54,16 +54,20 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
       the pure `moveTask` helper), enabled only in Manual order + All filter.
       Covered server-side (`api.test.js`) and client-side (`TaskList.test.jsx`).
 
-**Phase 1 is complete.**
+**Phase 1 is complete.** Phase 2 steps 9–10 done (11 partial).
 
 ## Phase 2 — UX polish (makes it feel finished)
 
-- [ ] **9. Loading / empty / error states + toasts** (M) — failures are
-      currently silent. _Depends on 1._
-- [ ] **10. Progress indicators** (S) — task counts / % done per project in the
-      sidebar.
-- [ ] **11. Optimistic UI or debounced refresh** (M) — app refetches after every
-      action today; smooth this out.
+- [x] **9. Loading / empty / error states + toasts** (M) — every mutation now
+      routes failures through `notifyError` (`client/src/notify.js`) instead of
+      failing silently; projects and tasks show loaders on first load and
+      branded empty states.
+- [x] **10. Progress indicators** (S) — `GET /projects` returns `task_count` /
+      `done_count` rollups; the sidebar shows a per-project progress bar + count,
+      and the task view header shows "X of Y done" + %. Kept in sync by a
+      `onTasksChanged` callback from `TaskList` → `Dashboard`.
+- [~] **11. Optimistic UI or debounced refresh** (M) — drag-reorder is already
+  optimistic; other actions still refetch. Revisit if it feels sluggish.
 
 ## Phase 3 — Deploy on the Windows media server (can start after Phase 1)
 
@@ -86,8 +90,8 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Recommended next step
 
-Phases 0 and 1 are complete (foundation hardened; full project + task editing,
-due dates, sort/filter, drag-reorder). Next is **Phase 2 — UX polish**: start
-with **step 10 (progress indicators)** for a quick visible win, or **step 9**
-(loading/empty/error states + toasts) to smooth over the currently-silent
-failures. Phase 3 (deploy on the Windows server) can begin any time.
+Phases 0 and 1 complete; the brand design is implemented; Phase 2 steps 9–10
+done. Best next move is **Phase 3 — deploy on the Windows media server** (serve
+the client from Express, run as a Windows service, HTTPS, SQLite backups) so it's
+actually usable. Optional polish still open: step 11 (optimistic UI) and Phase 4
+features (labels, search, comments, sharing).

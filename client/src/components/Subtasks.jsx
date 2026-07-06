@@ -2,13 +2,18 @@ import { useEffect, useState } from 'react';
 import { ActionIcon, Checkbox, Group, Stack, Text, TextInput } from '@mantine/core';
 import { Plus, Trash2 } from 'lucide-react';
 import { createSubtask, deleteSubtask, listSubtasks, updateSubtask } from '../api.js';
+import { notifyError } from '../notify.js';
 
 export default function Subtasks({ taskId }) {
   const [subtasks, setSubtasks] = useState([]);
   const [newTitle, setNewTitle] = useState('');
 
   async function refresh() {
-    setSubtasks(await listSubtasks(taskId));
+    try {
+      setSubtasks(await listSubtasks(taskId));
+    } catch (err) {
+      notifyError(err, 'Could not load subtasks');
+    }
   }
 
   useEffect(() => {
@@ -20,14 +25,31 @@ export default function Subtasks({ taskId }) {
     e.preventDefault();
     const title = newTitle.trim();
     if (!title) return;
-    await createSubtask(taskId, title);
-    setNewTitle('');
-    refresh();
+    try {
+      await createSubtask(taskId, title);
+      setNewTitle('');
+      refresh();
+    } catch (err) {
+      notifyError(err, 'Could not add subtask');
+    }
   }
 
   async function toggle(subtask) {
-    await updateSubtask(taskId, subtask.id, { done: !subtask.done });
-    refresh();
+    try {
+      await updateSubtask(taskId, subtask.id, { done: !subtask.done });
+      refresh();
+    } catch (err) {
+      notifyError(err, 'Could not update subtask');
+    }
+  }
+
+  async function handleDelete(subtask) {
+    try {
+      await deleteSubtask(taskId, subtask.id);
+      refresh();
+    } catch (err) {
+      notifyError(err, 'Could not delete subtask');
+    }
   }
 
   return (
@@ -48,10 +70,7 @@ export default function Subtasks({ taskId }) {
             color="red"
             size="sm"
             aria-label="Delete subtask"
-            onClick={async () => {
-              await deleteSubtask(taskId, s.id);
-              refresh();
-            }}
+            onClick={() => handleDelete(s)}
           >
             <Trash2 size={14} />
           </ActionIcon>
