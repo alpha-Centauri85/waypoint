@@ -13,9 +13,9 @@ import {
   Title,
   Tooltip,
 } from '@mantine/core';
-import { ArrowUpDown, CalendarClock, FileText, Pencil, Trash2 } from 'lucide-react';
+import { ArrowUpDown, CalendarClock, FileText, GripVertical, Pencil, Trash2 } from 'lucide-react';
 import dayjs from 'dayjs';
-import { createTask, deleteTask, listTasks, updateTask } from '../api.js';
+import { createTask, deleteTask, listTasks, reorderTasks, updateTask } from '../api.js';
 import Subtasks from './Subtasks.jsx';
 import TaskEditModal from './TaskEditModal.jsx';
 
@@ -62,20 +62,51 @@ export function arrangeTasks(tasks, statusFilter, sortBy) {
   return sorted;
 }
 
+// Move the task with `draggedId` to the position of `targetId`, returning a new
+// array (the original is untouched). Exported for tests.
+export function moveTask(tasks, draggedId, targetId) {
+  if (draggedId === targetId) return tasks;
+  const from = tasks.findIndex((t) => t.id === draggedId);
+  const to = tasks.findIndex((t) => t.id === targetId);
+  if (from === -1 || to === -1) return tasks;
+  const next = [...tasks];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next;
+}
+
 export default function TaskList({ project }) {
   const [tasks, setTasks] = useState([]);
   const [newTitle, setNewTitle] = useState('');
   const [editingTask, setEditingTask] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('default');
+  const [draggedId, setDraggedId] = useState(null);
+  const [dragOverId, setDragOverId] = useState(null);
 
   const visibleTasks = useMemo(
     () => arrangeTasks(tasks, statusFilter, sortBy),
     [tasks, statusFilter, sortBy],
   );
 
+  // Reordering only makes sense when the list reflects the stored manual order
+  // (no filter hiding rows, no other sort overriding it).
+  const reorderEnabled = statusFilter === 'all' && sortBy === 'default';
+
   async function refresh() {
     setTasks(await listTasks(project.id));
+  }
+
+  function handleDrop(targetId) {
+    const next = moveTask(tasks, draggedId, targetId);
+    setDraggedId(null);
+    setDragOverId(null);
+    if (next === tasks) return;
+    setTasks(next); // optimistic; revert by refetching if the server rejects it
+    reorderTasks(
+      project.id,
+      next.map((t) => t.id),
+    ).catch(refresh);
   }
 
   useEffect(() => {
@@ -140,9 +171,45 @@ export default function TaskList({ project }) {
 
       <Stack gap="sm">
         {visibleTasks.map((task) => (
-          <Paper key={task.id} withBorder p="sm" radius="md">
+          <Paper
+            key={task.id}
+            withBorder
+            p="sm"
+            radius="md"
+            draggable={reorderEnabled}
+            onDragStart={() => setDraggedId(task.id)}
+            onDragEnd={() => {
+              setDraggedId(null);
+              setDragOverId(null);
+            }}
+            onDragOver={(e) => {
+              if (!reorderEnabled || draggedId === null) return;
+              e.preventDefault();
+              if (dragOverId !== task.id) setDragOverId(task.id);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              handleDrop(task.id);
+            }}
+            style={{
+              opacity: draggedId === task.id ? 0.4 : 1,
+              borderTop:
+                dragOverId === task.id && draggedId !== task.id
+                  ? '2px solid var(--mantine-primary-color-filled)'
+                  : undefined,
+            }}
+          >
             <Group justify="space-between" wrap="nowrap">
               <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
+                {reorderEnabled && (
+                  <Tooltip label="Drag to reorder" openDelay={400}>
+                    <GripVertical
+                      size={16}
+                      aria-label="Drag handle"
+                      style={{ cursor: 'grab', flexShrink: 0, opacity: 0.5 }}
+                    />
+                  </Tooltip>
+                )}
                 <Tooltip label="Click to change status" openDelay={400}>
                   <Badge
                     color={STATUS_COLOR[task.status]}

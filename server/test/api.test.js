@@ -53,6 +53,38 @@ test('full flow: register → project → task → subtask', async () => {
   expect(tasks.body).toHaveLength(1);
 });
 
+test('tasks can be reordered and new tasks append to the end', async () => {
+  const agent = request.agent(app);
+  await agent.post('/api/auth/register').send({ email: 'r@x.com', password: 'password123' });
+  const project = await agent.post('/api/projects').send({ name: 'Ordering' });
+  const pid = project.body.id;
+
+  const a = (await agent.post(`/api/projects/${pid}/tasks`).send({ title: 'A' })).body;
+  const b = (await agent.post(`/api/projects/${pid}/tasks`).send({ title: 'B' })).body;
+  const c = (await agent.post(`/api/projects/${pid}/tasks`).send({ title: 'C' })).body;
+
+  // New tasks append: default listing is creation order.
+  let list = await agent.get(`/api/projects/${pid}/tasks`);
+  expect(list.body.map((t) => t.title)).toEqual(['A', 'B', 'C']);
+
+  // Reorder C, A, B.
+  const reordered = await agent
+    .patch(`/api/projects/${pid}/tasks/reorder`)
+    .send({ orderedIds: [c.id, a.id, b.id] });
+  expect(reordered.status).toBe(200);
+  expect(reordered.body.map((t) => t.title)).toEqual(['C', 'A', 'B']);
+
+  // The new order persists on a fresh fetch.
+  list = await agent.get(`/api/projects/${pid}/tasks`);
+  expect(list.body.map((t) => t.title)).toEqual(['C', 'A', 'B']);
+
+  // A partial/foreign id set is rejected as a 400.
+  const bad = await agent
+    .patch(`/api/projects/${pid}/tasks/reorder`)
+    .send({ orderedIds: [a.id, b.id] });
+  expect(bad.status).toBe(400);
+});
+
 test('users cannot see each other’s projects', async () => {
   const alice = request.agent(app);
   await alice.post('/api/auth/register').send({ email: 'alice@x.com', password: 'password123' });

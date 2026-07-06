@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import TaskList, { arrangeTasks } from './TaskList.jsx';
+import TaskList, { arrangeTasks, moveTask } from './TaskList.jsx';
 
 function jsonResponse(status, body) {
   return Promise.resolve({
@@ -99,6 +99,64 @@ describe('arrangeTasks', () => {
     const input = [...tasks];
     arrangeTasks(input, 'all', 'title');
     expect(input.map((t) => t.id)).toEqual([1, 2, 3]);
+  });
+});
+
+describe('moveTask', () => {
+  const tasks = [{ id: 1 }, { id: 2 }, { id: 3 }];
+
+  test('moves an item down to the target position', () => {
+    expect(moveTask(tasks, 1, 3).map((t) => t.id)).toEqual([2, 3, 1]);
+  });
+
+  test('moves an item up to the target position', () => {
+    expect(moveTask(tasks, 3, 1).map((t) => t.id)).toEqual([3, 1, 2]);
+  });
+
+  test('is a no-op for the same id or an unknown id', () => {
+    expect(moveTask(tasks, 2, 2)).toBe(tasks);
+    expect(moveTask(tasks, 99, 1)).toBe(tasks);
+  });
+
+  test('does not mutate the input', () => {
+    const input = [...tasks];
+    moveTask(input, 1, 3);
+    expect(input.map((t) => t.id)).toEqual([1, 2, 3]);
+  });
+});
+
+test('dragging a task onto another PATCHes the new order', async () => {
+  const tasks = [
+    { id: 1, title: 'A', status: 'todo', due_date: null, notes: null },
+    { id: 2, title: 'B', status: 'todo', due_date: null, notes: null },
+    { id: 3, title: 'C', status: 'todo', due_date: null, notes: null },
+  ];
+  const calls = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((url, opts = {}) => {
+      calls.push({ url: String(url), opts });
+      if (String(url).includes('/subtasks')) return jsonResponse(200, []);
+      if (String(url).includes('/reorder')) return jsonResponse(200, tasks);
+      if (String(url).endsWith('/tasks')) return jsonResponse(200, tasks);
+      return jsonResponse(200, []);
+    }),
+  );
+
+  renderWithProviders(<TaskList project={{ id: 1, name: 'P' }} />);
+  const rowA = (await screen.findByText('A')).closest('[draggable="true"]');
+  const rowC = screen.getByText('C').closest('[draggable="true"]');
+  expect(rowA).toBeTruthy();
+
+  fireEvent.dragStart(rowA);
+  fireEvent.dragOver(rowC);
+  fireEvent.drop(rowC);
+
+  await waitFor(() => {
+    const reorder = calls.find((c) => c.url.includes('/reorder'));
+    expect(reorder).toBeTruthy();
+    expect(reorder.opts.method).toBe('PATCH');
+    expect(JSON.parse(reorder.opts.body)).toEqual({ orderedIds: [2, 3, 1] });
   });
 });
 

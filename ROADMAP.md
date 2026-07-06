@@ -47,8 +47,14 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
       client-side by a pure `arrangeTasks(tasks, statusFilter, sortBy)` helper
       (due dates sort chronologically, no-due-date last; non-mutating). Covered by
       `client/src/components/TaskList.test.jsx`.
-- [ ] **8. Drag-to-reorder tasks** (L) — the `position` column exists but is
-      never written; add a reorder endpoint + DnD in the UI. _Depends on 7._
+- [x] **8. Drag-to-reorder tasks** (L) — `PATCH /projects/:id/tasks/reorder`
+      (`reorderTasks` model, transactional, validates a full permutation of the
+      project's task ids) rewrites `position`; new tasks now append (position =
+      max+1). Native HTML5 DnD in `TaskList` (grip handle, optimistic update via
+      the pure `moveTask` helper), enabled only in Manual order + All filter.
+      Covered server-side (`api.test.js`) and client-side (`TaskList.test.jsx`).
+
+**Phase 1 is complete.**
 
 ## Phase 2 — UX polish (makes it feel finished)
 
@@ -80,7 +86,8 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Recommended next step
 
-Phase 0 done; Phase 1 steps 4–7 done (project + task editing, due dates surfaced,
-sort & filter). Next: **step 8 (drag-to-reorder tasks)** — the last core task
-feature and the only remaining use of the `position` column. Or jump to Phase 2
-polish (**step 10**, progress indicators) for a quicker visible win.
+Phases 0 and 1 are complete (foundation hardened; full project + task editing,
+due dates, sort/filter, drag-reorder). Next is **Phase 2 — UX polish**: start
+with **step 10 (progress indicators)** for a quick visible win, or **step 9**
+(loading/empty/error states + toasts) to smooth over the currently-silent
+failures. Phase 3 (deploy on the Windows server) can begin any time.

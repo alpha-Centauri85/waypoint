@@ -41,6 +41,8 @@ export const updateTask = (projectId, taskId, fields) =>
   request(`/api/projects/${projectId}/tasks/${taskId}`, { method: 'PATCH', body: fields });
 export const deleteTask = (projectId, taskId) =>
   request(`/api/projects/${projectId}/tasks/${taskId}`, { method: 'DELETE' });
+export const reorderTasks = (projectId, orderedIds) =>
+  request(`/api/projects/${projectId}/tasks/reorder`, { method: 'PATCH', body: { orderedIds } });
 
 // Subtasks
 export const listSubtasks = (taskId) => request(`/api/tasks/${taskId}/subtasks`);

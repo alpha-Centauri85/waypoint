@@ -39,6 +39,7 @@ middleware guards protected routes via `req.session.userId`.
 - `POST /auth/register|login|logout`, `GET /auth/me`
 - `GET/POST /projects`, `GET/PATCH/DELETE /projects/:id`
 - `GET/POST /projects/:projectId/tasks`, `GET/PATCH/DELETE /projects/:projectId/tasks/:taskId`
+- `PATCH /projects/:projectId/tasks/reorder` (body `{ orderedIds }`)
 - `GET/POST /tasks/:taskId/subtasks`, `PATCH/DELETE /tasks/:taskId/subtasks/:subtaskId`
 
 ## Frontend
@@ -58,8 +59,9 @@ Full auth, project CRUD **incl. editing** (rename + description via
 title, status, due date, notes), subtask CRUD with done-toggle. Due dates are
 shown on task rows as a badge (red when overdue); notes surface a hover-preview
 icon. Tasks can be **filtered by status and sorted** (manual / due date / status /
-title) client-side. Only the `position` column remains unused (drag-reorder,
-step 8).
+title) client-side, and **drag-reordered** (native HTML5 DnD) in Manual-order
+view — persisted via a transactional reorder endpoint that writes `position`; new
+tasks append. **Phase 1 is complete** (all task-management features shipped).
 
 ## Error handling
 
@@ -94,13 +96,13 @@ Disabled under test; limits set by `AUTH_RATE_WINDOW_MS`/`AUTH_RATE_MAX`
 
 ## Verified
 
-ESLint clean; Prettier clean; 32 passing tests (Vitest — 23 server incl. full
+ESLint clean; Prettier clean; 38 passing tests (Vitest — 24 server incl. full
 register→project→task→subtask flow, cross-user isolation, error-handling,
-validation, security, and the presence-based null-clearing merge; 9 client incl.
-a TaskEditModal open→edit→PATCH flow and `arrangeTasks` sort/filter coverage);
-client builds; live end-to-end run against a real SQLite file confirmed auth/CRUD,
-editing (set/keep/clear due date+notes, rename project + clear description),
-session persistence, helmet headers, and a real 429 on the 3rd rapid login.
+validation, security, null-clearing merge, and reorder/append; 14 client incl.
+TaskEditModal open→edit→PATCH, `arrangeTasks` sort/filter, and a `moveTask`/DnD
+drop→reorder flow); client builds; live end-to-end runs against a real SQLite
+file confirmed auth/CRUD, editing, drag-reorder (persisted positions + append +
+400 on a bad set), session persistence, helmet headers, and a real 429.
 
 ## Conventions
 
@@ -125,6 +127,6 @@ for `matchMedia`/`ResizeObserver` live in `client/src/setupTests.js`.
 
 ## Not yet built (see ROADMAP.md)
 
-Phase 0 + Phase 1 steps 4–7 done. Next: drag-reorder (8), UX polish
-(loading/empty states, progress indicators), production static serving, Windows
-service + HTTPS + backups.
+Phases 0 + 1 done. Next: Phase 2 UX polish (loading/empty/error states + toasts,
+progress indicators, optimistic UI), then Phase 3 deploy (production static
+serving, Windows service + HTTPS + backups).

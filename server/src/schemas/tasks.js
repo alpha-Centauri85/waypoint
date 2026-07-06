@@ -24,3 +24,8 @@ export const updateTaskSchema = z.object({
   dueDate,
   notes,
 });
+
+// Reorder: the full set of the project's task ids in their new order.
+export const reorderTasksSchema = z.object({
+  orderedIds: z.array(z.number().int().positive()).min(1),
+});
