@@ -48,4 +48,7 @@ export const config = {
   // Needed so `secure` cookies + rate-limit client IPs work behind a reverse
   // proxy (Caddy/IIS/nginx). e.g. TRUST_PROXY=1.
   trustProxy: trustProxy(process.env.TRUST_PROXY),
+  // Where `npm run db:backup` writes WAL-safe snapshots, and how many to keep.
+  backupDir: process.env.BACKUP_DIR || path.join(dataDir, 'backups'),
+  backupKeep: Number(process.env.BACKUP_KEEP) || 14,
 };

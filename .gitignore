@@ -3,6 +3,13 @@ dist/
 build/
 coverage/
 *.log
+
+# Runtime data — the SQLite DB, its WAL/SHM sidecars, and backup snapshots.
+# The app recreates the data dir + schema on startup, so it need not be tracked.
+server/data/
+*.db
+*.db-shm
+*.db-wal
 .env
 .env.*
 !.env.example

@@ -47,6 +47,7 @@ The SQLite file is created automatically at `server/data/waypoint.db`.
 | `npm run lint`                          | ESLint over the repo                           |
 | `npm run format`                        | Prettier write                                 |
 | `npm run db:migrate --workspace server` | Create/upgrade the SQLite database             |
+| `npm run db:backup --workspace server`  | Write a WAL-safe DB snapshot to `BACKUP_DIR`   |
 
 ## Data model
 
@@ -64,9 +65,31 @@ client and API same-origin, so login works with no extra config.
 
 - SQLite uses `better-sqlite3`, which ships **prebuilt Windows binaries** — a
   plain `npm install` on the server works without a C++ toolchain.
-- Set real values in `server/.env`: `NODE_ENV=production`, a long random
-  `SESSION_SECRET`, and `CLIENT_ORIGIN` if the client is served from a different
-  origin. Cookies are marked `secure` in production, so serve over HTTPS.
-- Build the client (`npm run build`) and serve `client/dist` from your web
-  server (or add static serving to Express). Run the API with `npm start`,
-  ideally under a process manager so it restarts with the machine.
+- Set real values in `server/.env`: `NODE_ENV=production` and a long random
+  `SESSION_SECRET`. See `server/.env.example` for all options.
+
+### Single-origin (recommended)
+
+In production Express serves the built client itself — one process, no CORS:
+
+```bash
+npm run build            # -> client/dist
+npm start                # NODE_ENV=production serves app + API on :3000
+```
+
+Cookies are `secure` in production, so put it behind an HTTPS reverse proxy
+(Caddy/IIS/nginx) and set `TRUST_PROXY=1`. For a quick plain-HTTP LAN trial only,
+set `SECURE_COOKIES=false`.
+
+### Backups
+
+Snapshots are WAL-safe (safe to run live). Take one on a schedule:
+
+```bash
+npm run db:backup --workspace server   # -> server/data/backups/waypoint-<timestamp>.db
+```
+
+Keeps the newest `BACKUP_KEEP` (default 14). Schedule it with **Task Scheduler**
+on Windows (a daily action running the command above) or **cron** on Linux
+(e.g. `0 2 * * * cd /path/to/waypoint && npm run db:backup --workspace server`).
+The runtime data dir (`server/data/`, including backups) is git-ignored.

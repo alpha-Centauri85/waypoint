@@ -80,8 +80,12 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
       survives reboots.
 - [ ] **14. HTTPS** (M) — reverse proxy (Caddy/IIS) so `secure` session cookies
       work. _Depends on 12–13._
-- [ ] **15. SQLite backup job** (S) — scheduled WAL-safe copy of `waypoint.db`.
-      Do before relying on real data.
+- [x] **15. SQLite backup job** (S) — `npm run db:backup --workspace server`
+      writes a WAL-safe snapshot (better-sqlite3 online `.backup()`) to
+      `BACKUP_DIR` (default `server/data/backups`), keeping the newest
+      `BACKUP_KEEP` (default 14). Schedule via cron / Task Scheduler (see README).
+      Also stopped tracking the live DB in git (added `server/data/` to
+      `.gitignore`). Covered by `server/test/backup.test.js`.
 
 ## Phase 4 — Bigger features (pick based on need)
 
@@ -94,8 +98,8 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
 ## Recommended next step
 
 Phases 0–1 complete; brand design implemented; Phase 2 steps 9–10 done; Phase 3
-step 12 (single-origin serving) done. Next in Phase 3: **step 15 (SQLite backup
-job)** — do before real data accumulates — then **13 (Windows service)** and
-**14 (HTTPS via reverse proxy)** to finish the deploy. Then either **Phase 4**
-features (labels, search, comments, sharing — needs the bigger product roadmap we
-discussed) or step 11 (optimistic UI) polish.
+steps 12 (single-origin serving) + 15 (backups) done. Remaining Phase 3 work —
+**13 (Windows service)** and **14 (HTTPS reverse proxy)** — is host-specific
+setup on the media server itself (scripts + a deploy guide, not app code). After
+that: the **expanded product roadmap** (custom views, reporting/dashboards,
+labels, search, comments, sharing) or step 11 (optimistic UI) polish.
