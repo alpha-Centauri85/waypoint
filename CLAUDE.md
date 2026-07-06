@@ -58,7 +58,10 @@ hashed with `bcryptjs` (pure JS — no native build). `requireAuth` guards
 protected routers by checking `req.session.userId`.
 
 **Data model (SQLite):** `users` 1—* `projects` 1—* `tasks` 1—* `subtasks`,
-each child with `ON DELETE CASCADE`. Foreign keys are enforced per-connection
+each child with `ON DELETE CASCADE`. Tasks also carry a `priority` (0–4) and link
+many-to-many to a per-user label library (`labels` + `task_labels`); task API
+responses embed a `labels` array, and `labelIds` on create/update replaces a
+task's labels (ids the user doesn't own are ignored). Foreign keys are enforced per-connection
 via `PRAGMA foreign_keys = ON` in `server/src/db/index.js`. **Ownership is
 enforced in every query**: project reads/writes are scoped by `user_id`, task
 queries by `project_id`, and subtask authorization joins task→project→user

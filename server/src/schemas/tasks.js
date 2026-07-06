@@ -11,6 +11,7 @@ const dueDate = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'must be a date (YYYY-MM-DD)')
   .nullish();
 const notes = z.string().trim().max(10000, 'is too long').nullish();
+const labelIds = z.array(z.number().int().positive());
 
 export const createTaskSchema = z.object({
   title,
@@ -18,6 +19,7 @@ export const createTaskSchema = z.object({
   dueDate,
   notes,
   priority: priority.optional(),
+  labelIds: labelIds.optional(),
 });
 
 // PATCH: every field optional; a supplied title must still be non-empty.
@@ -27,6 +29,7 @@ export const updateTaskSchema = z.object({
   dueDate,
   notes,
   priority: priority.optional(),
+  labelIds: labelIds.optional(),
 });
 
 // Reorder: the full set of the project's task ids in their new order.
