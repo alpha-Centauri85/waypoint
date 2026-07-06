@@ -123,6 +123,23 @@ test('editing a project name and clearing its description works', async () => {
   expect(updated.body.description).toBeNull();
 });
 
+test('task priority defaults to 0, can be set, and is range-checked', async () => {
+  const { agent, projectId } = await agentWithProject();
+  const created = await agent.post(`/api/projects/${projectId}/tasks`).send({ title: 'P' });
+  expect(created.body.priority).toBe(0);
+
+  const bumped = await agent
+    .patch(`/api/projects/${projectId}/tasks/${created.body.id}`)
+    .send({ priority: 4 });
+  expect(bumped.body.priority).toBe(4);
+
+  const bad = await agent
+    .patch(`/api/projects/${projectId}/tasks/${created.body.id}`)
+    .send({ priority: 9 });
+  expect(bad.status).toBe(400);
+  expect(bad.body.error).toMatch(/priority/i);
+});
+
 test('a subtask without a title is a 400', async () => {
   const { agent, projectId } = await agentWithProject();
   const task = await agent.post(`/api/projects/${projectId}/tasks`).send({ title: 'T' });

@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 const title = z.string().trim().min(1, 'is required').max(500, 'is too long');
 const status = z.enum(['todo', 'doing', 'done']);
+// 0 none · 1 low · 2 medium · 3 high · 4 urgent
+const priority = z.number().int().min(0, 'is out of range').max(4, 'is out of range');
 // Due dates are calendar dates (YYYY-MM-DD); stored as TEXT in SQLite.
 const dueDate = z
   .string()
@@ -15,6 +17,7 @@ export const createTaskSchema = z.object({
   status: status.optional(),
   dueDate,
   notes,
+  priority: priority.optional(),
 });
 
 // PATCH: every field optional; a supplied title must still be non-empty.
@@ -23,6 +26,7 @@ export const updateTaskSchema = z.object({
   status: status.optional(),
   dueDate,
   notes,
+  priority: priority.optional(),
 });
 
 // Reorder: the full set of the project's task ids in their new order.

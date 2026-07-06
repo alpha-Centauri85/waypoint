@@ -19,3 +19,15 @@ db.pragma('foreign_keys = ON'); // enforce ON DELETE CASCADE (per-connection)
 // statements at import time. Idempotent — safe to run on every startup.
 const schema = fs.readFileSync(path.join(here, 'schema.sql'), 'utf8');
 db.exec(schema);
+
+// Lightweight, idempotent column additions for tables that predate them, so an
+// existing waypoint.db is upgraded in place on startup. (A fuller versioned
+// migration system is on the roadmap; this covers additive column changes.)
+function ensureColumn(table, column, definition) {
+  const exists = db
+    .prepare(`PRAGMA table_info(${table})`)
+    .all()
+    .some((c) => c.name === column);
+  if (!exists) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+}
+ensureColumn('tasks', 'priority', 'INTEGER NOT NULL DEFAULT 0');

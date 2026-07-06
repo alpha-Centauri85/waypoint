@@ -30,8 +30,8 @@ router.get('/', (req, res) => {
 });
 
 router.post('/', validateBody(createTaskSchema), (req, res) => {
-  const { title, status, dueDate, notes } = req.body;
-  res.status(201).json(createTask(req.project.id, { title, status, dueDate, notes }));
+  const { title, status, dueDate, notes, priority } = req.body;
+  res.status(201).json(createTask(req.project.id, { title, status, dueDate, notes, priority }));
 });
 
 // Must be declared before '/:taskId' so 'reorder' isn't parsed as a task id.

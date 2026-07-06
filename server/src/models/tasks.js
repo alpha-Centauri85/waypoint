@@ -3,15 +3,16 @@ import { db } from '../db/index.js';
 // New tasks append to the end of the project (position = current max + 1) so
 // manual ordering stays sensible; the first task in a project gets position 0.
 const insert = db.prepare(
-  `INSERT INTO tasks (project_id, title, status, due_date, notes, position)
-   VALUES (?, ?, ?, ?, ?, (SELECT COALESCE(MAX(position) + 1, 0) FROM tasks WHERE project_id = ?))`,
+  `INSERT INTO tasks (project_id, title, status, due_date, notes, priority, position)
+   VALUES (?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(position) + 1, 0) FROM tasks WHERE project_id = ?))`,
 );
 const listByProject = db.prepare(
   'SELECT * FROM tasks WHERE project_id = ? ORDER BY position, created_at',
 );
 const byId = db.prepare('SELECT * FROM tasks WHERE id = ? AND project_id = ?');
 const update = db.prepare(
-  'UPDATE tasks SET title = ?, status = ?, due_date = ?, notes = ? WHERE id = ? AND project_id = ?',
+  `UPDATE tasks SET title = ?, status = ?, due_date = ?, notes = ?, priority = ?
+   WHERE id = ? AND project_id = ?`,
 );
 const del = db.prepare('DELETE FROM tasks WHERE id = ? AND project_id = ?');
 
@@ -30,8 +31,19 @@ const ownedByUser = db.prepare(`
   WHERE tasks.id = ? AND projects.user_id = ?
 `);
 
-export function createTask(projectId, { title, status = 'todo', dueDate = null, notes = null }) {
-  const { lastInsertRowid } = insert.run(projectId, title, status, dueDate, notes, projectId);
+export function createTask(
+  projectId,
+  { title, status = 'todo', dueDate = null, notes = null, priority = 0 },
+) {
+  const { lastInsertRowid } = insert.run(
+    projectId,
+    title,
+    status,
+    dueDate,
+    notes,
+    priority,
+    projectId,
+  );
   return byId.get(lastInsertRowid, projectId);
 }
 
@@ -73,8 +85,17 @@ export function updateTask(id, projectId, fields) {
     status: 'status' in fields ? fields.status : current.status,
     due_date: 'dueDate' in fields ? fields.dueDate : current.due_date,
     notes: 'notes' in fields ? fields.notes : current.notes,
+    priority: 'priority' in fields ? fields.priority : current.priority,
   };
-  update.run(merged.title, merged.status, merged.due_date, merged.notes, id, projectId);
+  update.run(
+    merged.title,
+    merged.status,
+    merged.due_date,
+    merged.notes,
+    merged.priority,
+    id,
+    projectId,
+  );
   return byId.get(id, projectId);
 }
 

@@ -87,6 +87,15 @@ describe('arrangeTasks', () => {
     ]);
   });
 
+  test('priority sort puts the highest priority first', () => {
+    const withPriority = [
+      { id: 1, title: 'a', status: 'todo', due_date: null, priority: 1 },
+      { id: 2, title: 'b', status: 'todo', due_date: null, priority: 4 },
+      { id: 3, title: 'c', status: 'todo', due_date: null, priority: 2 },
+    ];
+    expect(arrangeTasks(withPriority, 'all', 'priority').map((t) => t.id)).toEqual([2, 3, 1]);
+  });
+
   test('title sort is case-insensitive alphabetical', () => {
     expect(arrangeTasks(tasks, 'all', 'title').map((t) => t.title)).toEqual([
       'apple',
