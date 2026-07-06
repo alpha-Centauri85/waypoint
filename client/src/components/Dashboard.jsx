@@ -196,6 +196,15 @@ function ProjectRow({ project, active, onSelect, onEdit, onDelete }) {
           <Trash2 size={14} />
         </ActionIcon>
       </Group>
+      {(project.labels ?? []).length > 0 && (
+        <Group gap={4}>
+          {project.labels.map((label) => (
+            <Badge key={label.id} size="xs" variant="dot" color={label.color}>
+              {label.name}
+            </Badge>
+          ))}
+        </Group>
+      )}
       <Group gap={8} wrap="nowrap" pr={4}>
         <Progress
           value={total ? pct : 0}

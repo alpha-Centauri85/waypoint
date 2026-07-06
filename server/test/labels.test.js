@@ -7,7 +7,7 @@ const app = createApp();
 
 beforeEach(() => {
   db.exec(
-    'DELETE FROM task_labels; DELETE FROM labels; DELETE FROM subtasks; DELETE FROM tasks; DELETE FROM projects; DELETE FROM users;',
+    'DELETE FROM project_labels; DELETE FROM task_labels; DELETE FROM labels; DELETE FROM subtasks; DELETE FROM tasks; DELETE FROM projects; DELETE FROM users;',
   );
 });
 
@@ -73,6 +73,26 @@ test("a task cannot be tagged with another user's label", async () => {
     .post(`/api/projects/${projectId}/tasks`)
     .send({ title: 'T', labelIds: [theirs.id] });
   expect(task.body.labels).toEqual([]);
+});
+
+test('the same label pool tags projects too (shared, no scope flag)', async () => {
+  const { agent, projectId } = await setup();
+  const client = (await agent.post('/api/labels').send({ name: 'client-acme', color: 'blue' }))
+    .body;
+
+  // Attach to the project on update; it comes back embedded.
+  const updated = await agent.patch(`/api/projects/${projectId}`).send({ labelIds: [client.id] });
+  expect(updated.body.labels.map((l) => l.name)).toEqual(['client-acme']);
+
+  // ...and the same label also tags a task (one shared pool).
+  const task = await agent
+    .post(`/api/projects/${projectId}/tasks`)
+    .send({ title: 'Kickoff', labelIds: [client.id] });
+  expect(task.body.labels.map((l) => l.name)).toEqual(['client-acme']);
+
+  // Project list embeds project labels.
+  const list = await agent.get('/api/projects');
+  expect(list.body[0].labels).toHaveLength(1);
 });
 
 test('deleting a label removes it from its tasks', async () => {

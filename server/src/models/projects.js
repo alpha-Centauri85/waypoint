@@ -1,4 +1,5 @@
 import { db } from '../db/index.js';
+import { getLabelsForProject, labelsByProjectIds } from './labels.js';
 
 const insert = db.prepare('INSERT INTO projects (user_id, name, description) VALUES (?, ?, ?)');
 // Include task rollups (total + done) so the UI can show per-project progress
@@ -26,11 +27,16 @@ export function createProject(userId, { name, description = null }) {
 }
 
 export function listProjects(userId) {
-  return listByUser.all(userId);
+  const rows = listByUser.all(userId);
+  const map = labelsByProjectIds(rows.map((p) => p.id));
+  for (const p of rows) p.labels = map[p.id] ?? [];
+  return rows;
 }
 
 export function getProject(id, userId) {
-  return byId.get(id, userId);
+  const project = byId.get(id, userId);
+  if (project) project.labels = getLabelsForProject(project.id);
+  return project;
 }
 
 export function updateProject(id, userId, fields) {

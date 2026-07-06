@@ -10,6 +10,7 @@ import {
   listProjects,
   updateProject,
 } from '../models/projects.js';
+import { setProjectLabels } from '../models/labels.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -19,8 +20,10 @@ router.get('/', (req, res) => {
 });
 
 router.post('/', validateBody(createProjectSchema), (req, res) => {
-  const { name, description } = req.body;
-  res.status(201).json(createProject(req.session.userId, { name, description }));
+  const { name, description, labelIds } = req.body;
+  const project = createProject(req.session.userId, { name, description });
+  if (labelIds) setProjectLabels(project.id, req.session.userId, labelIds);
+  res.status(201).json(getProject(project.id, req.session.userId));
 });
 
 router.get('/:id', (req, res) => {
@@ -32,7 +35,8 @@ router.get('/:id', (req, res) => {
 router.patch('/:id', validateBody(updateProjectSchema), (req, res) => {
   const project = updateProject(Number(req.params.id), req.session.userId, req.body);
   if (!project) throw notFound('Project not found');
-  res.json(project);
+  if ('labelIds' in req.body) setProjectLabels(project.id, req.session.userId, req.body.labelIds);
+  res.json(getProject(project.id, req.session.userId));
 });
 
 router.delete('/:id', (req, res) => {

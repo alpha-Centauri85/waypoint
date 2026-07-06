@@ -90,16 +90,23 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
 ## Phase 4 — Bigger features (pick based on need)
 
 - [x] **16. Labels/tags & priority** — task `priority` (0–4) with a select,
-      row flag, and priority sort. **Per-user label library** (`labels` +
-      `task_labels`, colored): CRUD at `/api/labels`, assign/create labels on a
-      task (embedded in task responses; foreign ids ignored), colored chips on
-      rows. Labels are first-class (stable ids) so they can key future
-      templates/modules. _Follow-ups:_ filter by label, and a label management UI
-      (rename/recolor/delete). Covered by `server/test/labels.test.js`.
+      row flag, and priority sort. **Per-user label library** (`labels`), shared
+      across tasks (`task_labels`) **and projects** (`project_labels`) — one pool,
+      no scope flag; scope lives in the association (see
+      `docs/labels-sections-templates.md`). CRUD at `/api/labels`; assign/create
+      from the task & project edit modals (`LabelPicker`), embedded in responses
+      (foreign ids ignored), colored chips on rows. Labels are first-class (stable
+      ids) so they can key future templates/modules. _Follow-ups:_ filter by
+      label + a label management UI. Covered by `server/test/labels.test.js`.
+- [ ] **16b. Sections (task grouping)** — a named grouping inside a project
+      (`sections`; `tasks.section_id`). Useful on its own and the runtime form a
+      module instantiates into. Structural unlock for templates. See design note.
 - [ ] **17. Search**
 - [ ] **18. Comments / activity log**
 - [ ] **19. Project sharing (multi-user collaboration)**
 - [ ] **20. Due-date notifications / reminders**
+- [ ] **21. Templates & modules** — reusable project blueprints composed of
+      modules (saved sections). Depends on 16b (sections). See design note.
 
 ## Recommended next step
 

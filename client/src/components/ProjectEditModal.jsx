@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { Alert, Button, Group, Modal, Stack, Textarea, TextInput } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { updateProject } from '../api.js';
+import LabelPicker from './LabelPicker.jsx';
 
 // Modal for renaming a project and editing its description. `project` is the one
 // being edited (or null when closed); on save it PATCHes and calls onSaved.
 export default function ProjectEditModal({ project, opened, onClose, onSaved }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [labelIds, setLabelIds] = useState([]);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -15,6 +17,7 @@ export default function ProjectEditModal({ project, opened, onClose, onSaved }) 
     if (!project) return;
     setName(project.name);
     setDescription(project.description ?? '');
+    setLabelIds((project.labels ?? []).map((l) => l.id));
     setError(null);
   }, [project]);
 
@@ -30,6 +33,7 @@ export default function ProjectEditModal({ project, opened, onClose, onSaved }) 
       await updateProject(project.id, {
         name: trimmed,
         description: description.trim() || null,
+        labelIds,
       });
       onSaved();
       onClose();
@@ -60,6 +64,7 @@ export default function ProjectEditModal({ project, opened, onClose, onSaved }) 
             autosize
             minRows={2}
           />
+          <LabelPicker value={labelIds} onChange={setLabelIds} />
           {error && (
             <Alert color="red" variant="light">
               {error}
