@@ -78,9 +78,9 @@ label management UI.
 nullable `tasks.section_id`; deleting a section ungroups its tasks). The task
 view renders grouped under section headers (inline rename/delete, per-section
 add-task, a "No section" group, add-section control); the task modal has a
-Section select; task drag-reorder is scoped within a section. This is the
-structural base for modules/templates (see `docs/labels-sections-templates.md`).
-Follow-ups: drag to reorder sections, and drag tasks across sections.
+Section select. Full drag-and-drop: reorder within a section, drag tasks across
+sections, and drag section headers to reorder — all persisted/optimistic. This is
+the structural base for modules/templates (see `docs/labels-sections-templates.md`).
 
 ## Error handling
 

@@ -169,6 +169,61 @@ test('dragging a task onto another PATCHes the new order', async () => {
   });
 });
 
+test('dragging a task into another section PATCHes its sectionId and reorders', async () => {
+  const tasks = [
+    {
+      id: 1,
+      title: 'In A',
+      status: 'todo',
+      due_date: null,
+      notes: null,
+      section_id: 10,
+      labels: [],
+    },
+    {
+      id: 2,
+      title: 'In B',
+      status: 'todo',
+      due_date: null,
+      notes: null,
+      section_id: 20,
+      labels: [],
+    },
+  ];
+  const sections = [
+    { id: 10, name: 'Alpha', position: 0 },
+    { id: 20, name: 'Beta', position: 1 },
+  ];
+  const calls = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((url, opts = {}) => {
+      calls.push({ url: String(url), opts });
+      if (String(url).includes('/subtasks')) return jsonResponse(200, []);
+      if (String(url).includes('/sections')) return jsonResponse(200, sections);
+      if (String(url).endsWith('/tasks')) return jsonResponse(200, tasks);
+      return jsonResponse(200, tasks);
+    }),
+  );
+
+  renderWithProviders(<TaskList project={{ id: 1, name: 'P' }} />);
+  const rowA = (await screen.findByText('In A')).closest('[draggable="true"]');
+  const rowB = screen.getByText('In B').closest('[draggable="true"]');
+
+  fireEvent.dragStart(rowA);
+  fireEvent.dragOver(rowB);
+  fireEvent.drop(rowB);
+
+  await waitFor(() => {
+    const patch = calls.find((c) => c.opts.method === 'PATCH' && c.url.endsWith('/tasks/1'));
+    expect(patch).toBeTruthy();
+    expect(JSON.parse(patch.opts.body)).toMatchObject({ sectionId: 20 });
+    const reorder = calls.find((c) => c.url.includes('/tasks/reorder'));
+    expect(reorder).toBeTruthy();
+    expect(JSON.parse(reorder.opts.body).orderedIds).toEqual([1, 2]);
+  });
+});
+
 test('the status filter hides non-matching tasks in the list', async () => {
   const tasks = [
     { id: 1, title: 'A todo task', status: 'todo', due_date: null, notes: null },
