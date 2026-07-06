@@ -43,6 +43,7 @@ import {
 } from '../api.js';
 import { notifyError } from '../notify.js';
 import TaskCard from './TaskCard.jsx';
+import TaskBoard from './TaskBoard.jsx';
 import TaskEditModal from './TaskEditModal.jsx';
 
 const STATUSES = ['todo', 'doing', 'done'];
@@ -111,6 +112,7 @@ export default function TaskList({ project, onTasksChanged }) {
   const [editingSectionName, setEditingSectionName] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('default');
+  const [view, setView] = useState('list'); // 'list' | 'board'
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const [draggedSectionId, setDraggedSectionId] = useState(null);
@@ -168,14 +170,17 @@ export default function TaskList({ project, onTasksChanged }) {
     }
   }
 
-  async function cycleStatus(task) {
-    const next = STATUSES[(STATUSES.indexOf(task.status) + 1) % STATUSES.length];
+  async function changeStatus(task, status) {
     try {
-      await updateTask(project.id, task.id, { status: next });
+      await updateTask(project.id, task.id, { status });
       refreshAll();
     } catch (err) {
       notifyError(err, 'Could not update task');
     }
+  }
+
+  function cycleStatus(task) {
+    changeStatus(task, STATUSES[(STATUSES.indexOf(task.status) + 1) % STATUSES.length]);
   }
 
   async function removeTask(task) {
@@ -447,22 +452,37 @@ export default function TaskList({ project, onTasksChanged }) {
 
       {tasks.length > 0 && (
         <Group justify="space-between" gap="xs">
-          <SegmentedControl
-            size="xs"
-            value={statusFilter}
-            onChange={setStatusFilter}
-            data={STATUS_FILTERS}
-          />
-          <Select
-            size="xs"
-            w={150}
-            aria-label="Sort tasks"
-            leftSection={<ArrowUpDown size={14} />}
-            data={SORT_OPTIONS}
-            value={sortBy}
-            onChange={(v) => setSortBy(v ?? 'default')}
-            allowDeselect={false}
-          />
+          <Group gap="xs">
+            <SegmentedControl
+              size="xs"
+              value={view}
+              onChange={setView}
+              data={[
+                { label: 'List', value: 'list' },
+                { label: 'Board', value: 'board' },
+              ]}
+            />
+            {view === 'list' && (
+              <SegmentedControl
+                size="xs"
+                value={statusFilter}
+                onChange={setStatusFilter}
+                data={STATUS_FILTERS}
+              />
+            )}
+          </Group>
+          {view === 'list' && (
+            <Select
+              size="xs"
+              w={150}
+              aria-label="Sort tasks"
+              leftSection={<ArrowUpDown size={14} />}
+              data={SORT_OPTIONS}
+              value={sortBy}
+              onChange={(v) => setSortBy(v ?? 'default')}
+              allowDeselect={false}
+            />
+          )}
         </Group>
       )}
 
@@ -472,7 +492,11 @@ export default function TaskList({ project, onTasksChanged }) {
         </Center>
       )}
 
-      {!loading && (
+      {!loading && view === 'board' && (
+        <TaskBoard tasks={tasks} onChangeStatus={changeStatus} onEditTask={setEditingTask} />
+      )}
+
+      {!loading && view === 'list' && (
         <Stack gap="lg">
           {/* Sections, in order */}
           {sections.map((section) => {
