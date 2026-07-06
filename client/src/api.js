@@ -33,6 +33,14 @@ export const updateProject = (id, fields) =>
   request(`/api/projects/${id}`, { method: 'PATCH', body: fields });
 export const deleteProject = (id) => request(`/api/projects/${id}`, { method: 'DELETE' });
 
+// Labels (per-user library)
+export const listLabels = () => request('/api/labels');
+export const createLabel = (name, color) =>
+  request('/api/labels', { method: 'POST', body: { name, color } });
+export const updateLabel = (id, fields) =>
+  request(`/api/labels/${id}`, { method: 'PATCH', body: fields });
+export const deleteLabel = (id) => request(`/api/labels/${id}`, { method: 'DELETE' });
+
 // Tasks
 export const listTasks = (projectId) => request(`/api/projects/${projectId}/tasks`);
 export const createTask = (projectId, title) =>

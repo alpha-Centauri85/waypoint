@@ -5,6 +5,7 @@ import { notifications } from '@mantine/notifications';
 import dayjs from 'dayjs';
 import { updateTask } from '../api.js';
 import { PRIORITY_OPTIONS } from '../priority.js';
+import LabelPicker from './LabelPicker.jsx';
 
 const STATUS_OPTIONS = [
   { value: 'todo', label: 'To do' },
@@ -20,6 +21,7 @@ export default function TaskEditModal({ project, task, opened, onClose, onSaved 
   const [priority, setPriority] = useState(0);
   const [dueDate, setDueDate] = useState(null); // Date | null
   const [notes, setNotes] = useState('');
+  const [labelIds, setLabelIds] = useState([]);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -31,6 +33,7 @@ export default function TaskEditModal({ project, task, opened, onClose, onSaved 
     setPriority(task.priority ?? 0);
     setDueDate(task.due_date ? dayjs(task.due_date).toDate() : null);
     setNotes(task.notes ?? '');
+    setLabelIds((task.labels ?? []).map((l) => l.id));
     setError(null);
   }, [task]);
 
@@ -47,6 +50,7 @@ export default function TaskEditModal({ project, task, opened, onClose, onSaved 
         title: trimmed,
         status,
         priority,
+        labelIds,
         // null clears the field; the backend merges by key presence.
         dueDate: dueDate ? dayjs(dueDate).format('YYYY-MM-DD') : null,
         notes: notes.trim() || null,
@@ -96,6 +100,7 @@ export default function TaskEditModal({ project, task, opened, onClose, onSaved 
             valueFormat="MMM D, YYYY"
             clearable
           />
+          <LabelPicker value={labelIds} onChange={setLabelIds} />
           <Textarea
             label="Notes"
             placeholder="Add any details…"

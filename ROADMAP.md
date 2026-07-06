@@ -89,7 +89,13 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Phase 4 — Bigger features (pick based on need)
 
-- [ ] **16. Labels/tags & priority**
+- [x] **16. Labels/tags & priority** — task `priority` (0–4) with a select,
+      row flag, and priority sort. **Per-user label library** (`labels` +
+      `task_labels`, colored): CRUD at `/api/labels`, assign/create labels on a
+      task (embedded in task responses; foreign ids ignored), colored chips on
+      rows. Labels are first-class (stable ids) so they can key future
+      templates/modules. _Follow-ups:_ filter by label, and a label management UI
+      (rename/recolor/delete). Covered by `server/test/labels.test.js`.
 - [ ] **17. Search**
 - [ ] **18. Comments / activity log**
 - [ ] **19. Project sharing (multi-user collaboration)**

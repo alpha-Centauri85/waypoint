@@ -9,6 +9,7 @@ import { db } from './db/index.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import healthRouter from './routes/health.js';
 import authRouter from './routes/auth.js';
+import labelsRouter from './routes/labels.js';
 import projectsRouter from './routes/projects.js';
 import tasksRouter from './routes/tasks.js';
 import subtasksRouter from './routes/subtasks.js';
@@ -75,6 +76,7 @@ export function createApp() {
 
   app.use('/api/health', healthRouter);
   app.use('/api/auth', authRouter);
+  app.use('/api/labels', labelsRouter);
   app.use('/api/projects', projectsRouter);
   app.use('/api/projects/:projectId/tasks', tasksRouter);
   app.use('/api/tasks/:taskId/subtasks', subtasksRouter);

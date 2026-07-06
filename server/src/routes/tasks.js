@@ -12,6 +12,7 @@ import {
   reorderTasks,
   updateTask,
 } from '../models/tasks.js';
+import { setTaskLabels } from '../models/labels.js';
 
 // mergeParams lets this router read :projectId from the mount path.
 const router = Router({ mergeParams: true });
@@ -30,8 +31,10 @@ router.get('/', (req, res) => {
 });
 
 router.post('/', validateBody(createTaskSchema), (req, res) => {
-  const { title, status, dueDate, notes, priority } = req.body;
-  res.status(201).json(createTask(req.project.id, { title, status, dueDate, notes, priority }));
+  const { title, status, dueDate, notes, priority, labelIds } = req.body;
+  const task = createTask(req.project.id, { title, status, dueDate, notes, priority });
+  if (labelIds) setTaskLabels(task.id, req.session.userId, labelIds);
+  res.status(201).json(getTask(task.id, req.project.id));
 });
 
 // Must be declared before '/:taskId' so 'reorder' isn't parsed as a task id.
@@ -50,7 +53,8 @@ router.get('/:taskId', (req, res) => {
 router.patch('/:taskId', validateBody(updateTaskSchema), (req, res) => {
   const task = updateTask(Number(req.params.taskId), req.project.id, req.body);
   if (!task) throw notFound('Task not found');
-  res.json(task);
+  if ('labelIds' in req.body) setTaskLabels(task.id, req.session.userId, req.body.labelIds);
+  res.json(getTask(task.id, req.project.id));
 });
 
 router.delete('/:taskId', (req, res) => {

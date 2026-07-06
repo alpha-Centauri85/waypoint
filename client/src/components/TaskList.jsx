@@ -329,6 +329,16 @@ export default function TaskList({ project, onTasksChanged }) {
                       {dayjs(task.due_date).format('MMM D')}
                     </Badge>
                   )}
+                  {(task.labels ?? []).map((label) => (
+                    <Badge
+                      key={label.id}
+                      variant="dot"
+                      color={label.color}
+                      style={{ flexShrink: 0 }}
+                    >
+                      {label.name}
+                    </Badge>
+                  ))}
                 </Group>
                 <Group gap={4} wrap="nowrap">
                   <ActionIcon

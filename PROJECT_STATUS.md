@@ -40,6 +40,7 @@ middleware guards protected routes via `req.session.userId`.
 - `GET/POST /projects`, `GET/PATCH/DELETE /projects/:id`
 - `GET/POST /projects/:projectId/tasks`, `GET/PATCH/DELETE /projects/:projectId/tasks/:taskId`
 - `PATCH /projects/:projectId/tasks/reorder` (body `{ orderedIds }`)
+- `GET/POST /labels`, `PATCH/DELETE /labels/:id`
 - `GET/POST /tasks/:taskId/subtasks`, `PATCH/DELETE /tasks/:taskId/subtasks/:subtaskId`
 
 ## Frontend
@@ -56,12 +57,21 @@ checklist items. All backend calls funnel through `client/src/api.js` (with
 
 Full auth, project CRUD **incl. editing** (rename + description via
 `ProjectEditModal`), task CRUD **incl. a full edit modal** (`TaskEditModal`:
-title, status, due date, notes), subtask CRUD with done-toggle. Due dates are
-shown on task rows as a badge (red when overdue); notes surface a hover-preview
-icon. Tasks can be **filtered by status and sorted** (manual / due date / status /
-title) client-side, and **drag-reordered** (native HTML5 DnD) in Manual-order
-view — persisted via a transactional reorder endpoint that writes `position`; new
-tasks append. **Phase 1 is complete** (all task-management features shipped).
+title, status, priority, due date, notes, labels), subtask CRUD with done-toggle.
+Due dates are shown on task rows as a badge (red when overdue); notes surface a
+hover-preview icon. Tasks can be **filtered by status and sorted** (manual /
+priority / due date / status / title) client-side, and **drag-reordered** (native
+HTML5 DnD) in Manual-order view — persisted via a transactional reorder endpoint
+that writes `position`; new tasks append. **Phase 1 is complete** (all
+task-management features shipped).
+
+**Labels & priority (Waypoint 1):** tasks have a **priority** (0–4: none→urgent)
+shown as a colored flag and sortable. A **per-user label library** (`labels` +
+`task_labels`, colored) is managed at `/api/labels`; labels are assigned/created
+from the task edit modal (`LabelPicker`), embedded in task responses, and shown
+as colored chips on rows. Labels are first-class entities (stable ids) — the
+foundation for future templates/modules. Open follow-ups: filter-by-label and a
+label management UI.
 
 ## Error handling
 

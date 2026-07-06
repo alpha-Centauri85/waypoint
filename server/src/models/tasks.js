@@ -1,4 +1,5 @@
 import { db } from '../db/index.js';
+import { getLabelsForTask, labelsByTaskIds } from './labels.js';
 
 // New tasks append to the end of the project (position = current max + 1) so
 // manual ordering stays sensible; the first task in a project gets position 0.
@@ -59,15 +60,27 @@ export function reorderTasks(projectId, orderedIds) {
     orderedIds.every((id) => existingSet.has(id));
   if (!isPermutation) return null;
   applyOrder(projectId, orderedIds);
-  return listByProject.all(projectId);
+  return withLabels(listByProject.all(projectId));
+}
+
+// Attach each task's labels. Accepts a single task or an array; a bulk query
+// avoids N+1 for lists.
+function withLabels(tasks) {
+  if (Array.isArray(tasks)) {
+    const map = labelsByTaskIds(tasks.map((t) => t.id));
+    for (const t of tasks) t.labels = map[t.id] ?? [];
+    return tasks;
+  }
+  if (tasks) tasks.labels = getLabelsForTask(tasks.id);
+  return tasks;
 }
 
 export function listTasks(projectId) {
-  return listByProject.all(projectId);
+  return withLabels(listByProject.all(projectId));
 }
 
 export function getTask(id, projectId) {
-  return byId.get(id, projectId);
+  return withLabels(byId.get(id, projectId));
 }
 
 export function getTaskForUser(id, userId) {
