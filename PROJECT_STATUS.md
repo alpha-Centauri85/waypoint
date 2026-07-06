@@ -42,6 +42,7 @@ middleware guards protected routes via `req.session.userId`.
 - `PATCH /projects/:projectId/tasks/reorder` (body `{ orderedIds }`)
 - `GET/POST /projects/:projectId/sections`, `PATCH/DELETE .../sections/:id`, `PATCH .../sections/reorder`
 - `GET/POST /labels`, `PATCH/DELETE /labels/:id`
+- `GET /templates`, `GET/DELETE /templates/:id`, `POST /templates/from-project`, `POST /templates/:id/instantiate`
 - `GET/POST /tasks/:taskId/subtasks`, `PATCH/DELETE /tasks/:taskId/subtasks/:subtaskId`
 
 ## Frontend
@@ -81,6 +82,15 @@ add-task, a "No section" group, add-section control); the task modal has a
 Section select. Full drag-and-drop: reorder within a section, drag tasks across
 sections, and drag section headers to reorder — all persisted/optimistic. This is
 the structural base for modules/templates (see `docs/labels-sections-templates.md`).
+
+**Templates & modules (MVP):** reusable project blueprints — model is
+`templates` → `template_modules` → `modules` → `module_tasks`. **Save a project
+as a template** (each section → a module; ungrouped tasks → a "General" module),
+and **start a new project from a template** (instantiates a section per module
+with tasks copied in, fields preserved). API under `/api/templates`; UI is "Save
+as template" (project actions menu) + a "Start from a template" picker in the
+sidebar. Follow-ups: a dedicated module/template editor and carrying
+labels/due-dates into blueprints.
 
 ## Error handling
 

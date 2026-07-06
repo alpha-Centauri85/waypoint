@@ -112,8 +112,16 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
 - [ ] **18. Comments / activity log**
 - [ ] **19. Project sharing (multi-user collaboration)**
 - [ ] **20. Due-date notifications / reminders**
-- [ ] **21. Templates & modules** — reusable project blueprints composed of
-      modules (saved sections). Depends on 16b (sections). See design note.
+- [~] **21. Templates & modules** — reusable project blueprints composed of
+  modules (saved sections). Model: `templates` → `template_modules` →
+  `modules` → `module_tasks`. **Save a project as a template** (sections →
+  modules, ungrouped → a "General" module) and **start a new project from a
+  template** (instantiates sections + tasks). API under `/api/templates`
+  (`from-project`, `:id/instantiate`, list/get/delete). UI: "Save as template"
+  in the project actions menu + "Start from a template" picker in the sidebar.
+  Covered by `server/test/templates.test.js`. _Follow-ups:_ a dedicated
+  module/template editor (edit modules, reorder, reuse a module across
+  templates), and carrying labels/due dates into blueprints.
 
 ## Recommended next step
 

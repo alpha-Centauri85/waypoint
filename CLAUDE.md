@@ -66,7 +66,13 @@ pool tags projects via `project_labels`. Task/project API responses embed a
 `labels` array; `labelIds` on create/update replaces the labels (ids the user
 doesn't own are ignored). A task's `sectionId` is validated to the same project.
 Additive column changes use the idempotent `ensureColumn` helper in
-`db/index.js` (a fuller versioned-migration system is still on the roadmap). Foreign keys are enforced per-connection
+`db/index.js` (a fuller versioned-migration system is still on the roadmap).
+**Templates** are reusable blueprints: `templates` → `template_modules` →
+`modules` → `module_tasks` (all user-scoped). "Save as template" derives
+modules from a project's sections; "instantiate" builds a new project with a
+section per module. Instantiation reuses `createProject`/`createSection`/
+`createTask` inside a `db.transaction` (models may compose other models, but only
+labels/sections/tasks are leaf modules — avoid import cycles). Foreign keys are enforced per-connection
 via `PRAGMA foreign_keys = ON` in `server/src/db/index.js`. **Ownership is
 enforced in every query**: project reads/writes are scoped by `user_id`, task
 queries by `project_id`, and subtask authorization joins task→project→user

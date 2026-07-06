@@ -6,6 +6,8 @@ import {
   Center,
   Group,
   Loader,
+  Menu,
+  Modal,
   Progress,
   SegmentedControl,
   Select,
@@ -14,10 +16,22 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
-import { ArrowUpDown, Check, GripVertical, Pencil, Plus, Trash2, X } from 'lucide-react';
+import {
+  ArrowUpDown,
+  Check,
+  EllipsisVertical,
+  GripVertical,
+  LayoutTemplate,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+} from 'lucide-react';
+import { notifications } from '@mantine/notifications';
 import {
   createSection,
   createTask,
+  createTemplateFromProject,
   deleteSection,
   deleteTask,
   listSections,
@@ -102,6 +116,9 @@ export default function TaskList({ project, onTasksChanged }) {
   const [draggedSectionId, setDraggedSectionId] = useState(null);
   const [dropZoneSectionId, setDropZoneSectionId] = useState(undefined); // undefined = none
   const [loading, setLoading] = useState(true);
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [savingTemplate, setSavingTemplate] = useState(false);
 
   const visibleTasks = useMemo(
     () => arrangeTasks(tasks, statusFilter, sortBy),
@@ -203,6 +220,22 @@ export default function TaskList({ project, onTasksChanged }) {
       refreshAll(); // tasks become ungrouped
     } catch (err) {
       notifyError(err, 'Could not delete section');
+    }
+  }
+
+  // --- templates ---
+  async function saveAsTemplate() {
+    const name = templateName.trim();
+    if (!name) return;
+    setSavingTemplate(true);
+    try {
+      const template = await createTemplateFromProject(project.id, name);
+      setTemplateModalOpen(false);
+      notifications.show({ message: `Saved “${template.name}” as a template`, color: 'teal' });
+    } catch (err) {
+      notifyError(err, 'Could not save template');
+    } finally {
+      setSavingTemplate(false);
     }
   }
 
@@ -365,19 +398,39 @@ export default function TaskList({ project, onTasksChanged }) {
             </Text>
           )}
         </div>
-        {tasks.length > 0 && (
-          <Stack gap={4} w={180} style={{ flexShrink: 0 }}>
-            <Group justify="space-between" gap="xs">
-              <Text size="xs" c="dark.2">
-                {doneCount} of {tasks.length} done
-              </Text>
-              <Text size="xs" fw={600} c={pct === 100 ? 'teal.4' : 'dark.1'}>
-                {pct}%
-              </Text>
-            </Group>
-            <Progress value={pct} color={pct === 100 ? 'teal' : 'amber'} size="md" radius="xl" />
-          </Stack>
-        )}
+        <Group gap="sm" align="flex-start" wrap="nowrap">
+          {tasks.length > 0 && (
+            <Stack gap={4} w={180} style={{ flexShrink: 0 }}>
+              <Group justify="space-between" gap="xs">
+                <Text size="xs" c="dark.2">
+                  {doneCount} of {tasks.length} done
+                </Text>
+                <Text size="xs" fw={600} c={pct === 100 ? 'teal.4' : 'dark.1'}>
+                  {pct}%
+                </Text>
+              </Group>
+              <Progress value={pct} color={pct === 100 ? 'teal' : 'amber'} size="md" radius="xl" />
+            </Stack>
+          )}
+          <Menu shadow="md" position="bottom-end" width={200}>
+            <Menu.Target>
+              <ActionIcon variant="subtle" color="gray" aria-label="Project actions">
+                <EllipsisVertical size={18} />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item
+                leftSection={<LayoutTemplate size={15} />}
+                onClick={() => {
+                  setTemplateName(project.name);
+                  setTemplateModalOpen(true);
+                }}
+              >
+                Save as template
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        </Group>
       </Group>
 
       <form onSubmit={(e) => (e.preventDefault(), addTask(newTitle), setNewTitle(''))}>
@@ -602,6 +655,42 @@ export default function TaskList({ project, onTasksChanged }) {
         onClose={() => setEditingTask(null)}
         onSaved={refreshAll}
       />
+
+      <Modal
+        opened={templateModalOpen}
+        onClose={() => setTemplateModalOpen(false)}
+        title="Save as template"
+        centered
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            saveAsTemplate();
+          }}
+        >
+          <Stack>
+            <Text size="sm" c="dark.2">
+              Captures this project’s sections and tasks as a reusable template. You can start new
+              projects from it later.
+            </Text>
+            <TextInput
+              label="Template name"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.currentTarget.value)}
+              required
+              data-autofocus
+            />
+            <Group justify="flex-end">
+              <Button type="button" variant="default" onClick={() => setTemplateModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={savingTemplate}>
+                Save template
+              </Button>
+            </Group>
+          </Stack>
+        </form>
+      </Modal>
     </Stack>
   );
 }
