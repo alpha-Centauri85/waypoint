@@ -1,3 +1,4 @@
+import path from 'node:path';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -19,10 +20,36 @@ const SqliteStore = SqliteStoreFactory(session);
 export function createApp() {
   const app = express();
 
-  // Security response headers. This is a JSON API (the client is served
-  // separately in dev), so the defaults are a good fit.
-  app.use(helmet());
-  app.use(cors({ origin: config.clientOrigin, credentials: true }));
+  // Behind a reverse proxy (production TLS), trust it so `secure` cookies are
+  // set and req.ip reflects the real client for rate limiting.
+  if (config.trustProxy !== false) app.set('trust proxy', config.trustProxy);
+
+  // Security response headers. When serving the client we apply a CSP tuned for
+  // the SPA (self-hosted assets/fonts; Mantine needs inline styles). Otherwise
+  // (API-only in dev/split deploy) leave CSP off so it doesn't fight the dev host.
+  app.use(
+    helmet({
+      contentSecurityPolicy: config.serveClient
+        ? {
+            directives: {
+              defaultSrc: ["'self'"],
+              scriptSrc: ["'self'"],
+              styleSrc: ["'self'", "'unsafe-inline'"], // Mantine injects inline styles
+              imgSrc: ["'self'", 'data:'],
+              fontSrc: ["'self'"],
+              connectSrc: ["'self'"],
+              objectSrc: ["'none'"],
+              baseUri: ["'self'"],
+            },
+          }
+        : false,
+    }),
+  );
+  // CORS is only needed when the client is served from a different origin (dev,
+  // or a split deploy). When Express serves the client, requests are same-origin.
+  if (!config.serveClient) {
+    app.use(cors({ origin: config.clientOrigin, credentials: true }));
+  }
   app.use(express.json());
 
   const sessionOptions = {
@@ -32,7 +59,7 @@ export function createApp() {
     cookie: {
       httpOnly: true,
       sameSite: 'lax',
-      secure: config.nodeEnv === 'production', // requires HTTPS in production
+      secure: config.secureCookies, // requires HTTPS when true
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
     },
   };
@@ -52,8 +79,20 @@ export function createApp() {
   app.use('/api/projects/:projectId/tasks', tasksRouter);
   app.use('/api/tasks/:taskId/subtasks', subtasksRouter);
 
-  // 404 for unknown API routes, then the central error handler (must be last).
+  // 404 for unknown API routes (before the SPA fallback so /api/* never returns
+  // index.html).
   app.use('/api', notFoundHandler);
+
+  // In a single-origin production deploy, serve the built client and let the SPA
+  // handle any non-API path.
+  if (config.serveClient) {
+    app.use(express.static(config.clientDist));
+    app.get(/^\/(?!api\/).*/, (req, res) => {
+      res.sendFile(path.join(config.clientDist, 'index.html'));
+    });
+  }
+
+  // Central error handler (must be last).
   app.use(errorHandler);
 
   return app;
