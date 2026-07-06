@@ -14,7 +14,7 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
-import { ArrowUpDown, Check, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { ArrowUpDown, Check, GripVertical, Pencil, Plus, Trash2, X } from 'lucide-react';
 import {
   createSection,
   createTask,
@@ -22,6 +22,7 @@ import {
   deleteTask,
   listSections,
   listTasks,
+  reorderSections,
   reorderTasks,
   updateSection,
   updateTask,
@@ -98,6 +99,8 @@ export default function TaskList({ project, onTasksChanged }) {
   const [sortBy, setSortBy] = useState('default');
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
+  const [draggedSectionId, setDraggedSectionId] = useState(null);
+  const [dropZoneSectionId, setDropZoneSectionId] = useState(undefined); // undefined = none
   const [loading, setLoading] = useState(true);
 
   const visibleTasks = useMemo(
@@ -203,47 +206,136 @@ export default function TaskList({ project, onTasksChanged }) {
     }
   }
 
-  // --- drag reorder (within a single section only) ---
-  function dragPropsFor(task) {
+  // --- task drag (reorder within a section, or move across sections) ---
+  function taskDragProps(task) {
     return {
       dragging: draggedId === task.id,
       dragOver: dragOverId === task.id && draggedId !== task.id,
       onDragStart: () => setDraggedId(task.id),
-      onDragEnd: () => {
-        setDraggedId(null);
-        setDragOverId(null);
-      },
+      onDragEnd: clearDrag,
       onDragOver: (e) => {
         if (!reorderEnabled || draggedId === null) return;
-        const dragged = tasks.find((t) => t.id === draggedId);
-        if (!dragged || !sameSection(dragged, task)) return; // same group only
         e.preventDefault();
+        e.stopPropagation(); // over a task → task highlight only, not the section zone
         if (dragOverId !== task.id) setDragOverId(task.id);
       },
       onDrop: (e) => {
         e.preventDefault();
-        dropOn(task);
+        e.stopPropagation(); // don't also trigger the section drop zone
+        dropOnTask(task);
       },
     };
   }
 
-  function dropOn(target) {
-    const dragged = tasks.find((t) => t.id === draggedId);
+  function clearDrag() {
     setDraggedId(null);
     setDragOverId(null);
-    if (!dragged || dragged.id === target.id || !sameSection(dragged, target)) return;
-    const group = tasks.filter((t) => sameSection(t, target));
-    const next = moveTask(group, dragged.id, target.id);
-    if (next === group) return;
-    // Rebuild the full list, substituting the group's new order in place.
-    const iter = next[Symbol.iterator]();
-    const full = tasks.map((t) => (sameSection(t, target) ? iter.next().value : t));
-    setTasks(full); // optimistic; refetch reverts on failure
-    reorderTasks(
-      project.id,
-      next.map((t) => t.id),
-    ).catch((err) => {
+    setDraggedSectionId(null);
+    setDropZoneSectionId(undefined);
+  }
+
+  function persistOrder(orderedIds) {
+    reorderTasks(project.id, orderedIds).catch((err) => {
       notifyError(err, 'Could not reorder tasks');
+      refresh();
+    });
+  }
+
+  function dropOnTask(target) {
+    const dragged = tasks.find((t) => t.id === draggedId);
+    clearDrag();
+    if (!dragged || dragged.id === target.id) return;
+    if (sameSection(dragged, target)) {
+      // Reorder within the section, optimistically.
+      const group = tasks.filter((t) => sameSection(t, target));
+      const next = moveTask(group, dragged.id, target.id);
+      if (next === group) return;
+      const iter = next[Symbol.iterator]();
+      setTasks(tasks.map((t) => (sameSection(t, target) ? iter.next().value : t)));
+      persistOrder(next.map((t) => t.id));
+    } else {
+      moveTaskToSection(dragged, target.section_id ?? null, target.id);
+    }
+  }
+
+  // Drop a task onto a section's area (or the "No section" area) → append there.
+  function dropIntoSection(sectionId) {
+    const dragged = tasks.find((t) => t.id === draggedId);
+    clearDrag();
+    if (!dragged || (dragged.section_id ?? null) === (sectionId ?? null)) return;
+    moveTaskToSection(dragged, sectionId, null);
+  }
+
+  // Move a task into another section, placed before `beforeTaskId` (or at the end
+  // when null). Persist the section change, then the target section's order.
+  async function moveTaskToSection(dragged, sectionId, beforeTaskId) {
+    const targetGroup = tasks.filter(
+      (t) => (t.section_id ?? null) === (sectionId ?? null) && t.id !== dragged.id,
+    );
+    const idx = beforeTaskId ? targetGroup.findIndex((t) => t.id === beforeTaskId) : -1;
+    const at = idx === -1 ? targetGroup.length : idx;
+    const orderedIds = [
+      ...targetGroup.slice(0, at).map((t) => t.id),
+      dragged.id,
+      ...targetGroup.slice(at).map((t) => t.id),
+    ];
+    try {
+      await updateTask(project.id, dragged.id, { sectionId });
+      await reorderTasks(project.id, orderedIds);
+      refreshAll();
+    } catch (err) {
+      notifyError(err, 'Could not move task');
+      refresh();
+    }
+  }
+
+  function sectionDropZone(sectionId) {
+    return {
+      active: draggedId !== null && dropZoneSectionId === (sectionId ?? null),
+      onDragOver: (e) => {
+        if (draggedId === null) return;
+        e.preventDefault();
+        if (dropZoneSectionId !== (sectionId ?? null)) setDropZoneSectionId(sectionId ?? null);
+      },
+      onDrop: (e) => {
+        e.preventDefault();
+        dropIntoSection(sectionId);
+      },
+    };
+  }
+
+  // --- section drag (reorder sections) ---
+  function sectionDragProps(section) {
+    return {
+      draggable: reorderEnabled,
+      onDragStart: () => setDraggedSectionId(section.id),
+      onDragEnd: clearDrag,
+      onDragOver: (e) => {
+        if (draggedSectionId === null || draggedSectionId === section.id) return;
+        e.preventDefault();
+        if (dropZoneSectionId !== section.id) setDropZoneSectionId(section.id);
+      },
+      onDrop: (e) => {
+        if (draggedSectionId === null) return;
+        e.preventDefault();
+        e.stopPropagation();
+        dropOnSection(section);
+      },
+    };
+  }
+
+  function dropOnSection(target) {
+    const id = draggedSectionId;
+    clearDrag();
+    if (!id || id === target.id) return;
+    const next = moveTask(sections, id, target.id); // generic reorder by id
+    if (next === sections) return;
+    setSections(next); // optimistic
+    reorderSections(
+      project.id,
+      next.map((s) => s.id),
+    ).catch((err) => {
+      notifyError(err, 'Could not reorder sections');
       refresh();
     });
   }
@@ -253,7 +345,7 @@ export default function TaskList({ project, onTasksChanged }) {
       key={task.id}
       task={task}
       reorderEnabled={reorderEnabled}
-      drag={dragPropsFor(task)}
+      drag={taskDragProps(task)}
       onCycle={() => cycleStatus(task)}
       onEdit={() => setEditingTask(task)}
       onDelete={() => removeTask(task)}
@@ -332,8 +424,20 @@ export default function TaskList({ project, onTasksChanged }) {
           {/* Sections, in order */}
           {sections.map((section) => {
             const items = visibleTasks.filter((t) => t.section_id === section.id);
+            const zone = sectionDropZone(section.id);
             return (
-              <Stack key={section.id} gap="xs">
+              <Stack
+                key={section.id}
+                gap="xs"
+                onDragOver={zone.onDragOver}
+                onDrop={zone.onDrop}
+                style={{
+                  opacity: draggedSectionId === section.id ? 0.4 : 1,
+                  borderRadius: 10,
+                  outline: zone.active ? '2px dashed var(--mantine-color-teal-7)' : 'none',
+                  outlineOffset: 4,
+                }}
+              >
                 {editingSectionId === section.id ? (
                   <Group gap="xs" wrap="nowrap">
                     <TextInput
@@ -367,12 +471,23 @@ export default function TaskList({ project, onTasksChanged }) {
                   <Group
                     justify="space-between"
                     gap="xs"
+                    {...sectionDragProps(section)}
                     style={{
-                      borderBottom: '1px solid var(--mantine-color-dark-4)',
+                      borderBottom:
+                        draggedSectionId !== null && dropZoneSectionId === section.id
+                          ? '2px solid var(--mantine-primary-color-filled)'
+                          : '1px solid var(--mantine-color-dark-4)',
                       paddingBottom: 6,
                     }}
                   >
                     <Group gap="xs">
+                      {reorderEnabled && (
+                        <GripVertical
+                          size={15}
+                          aria-label="Drag section"
+                          style={{ cursor: 'grab', opacity: 0.5, flexShrink: 0 }}
+                        />
+                      )}
                       <Text fw={700} tt="uppercase" size="sm" style={{ letterSpacing: '0.04em' }}>
                         {section.name}
                       </Text>
@@ -417,13 +532,37 @@ export default function TaskList({ project, onTasksChanged }) {
             );
           })}
 
-          {/* Ungrouped tasks (shown under a header only when sections exist) */}
-          {sections.length > 0 && ungrouped.length > 0 && (
-            <Text fw={700} tt="uppercase" size="sm" c="dark.2" style={{ letterSpacing: '0.04em' }}>
-              No section
-            </Text>
-          )}
-          <Stack gap="sm">{ungrouped.map(renderTask)}</Stack>
+          {/* Ungrouped tasks (a drop target so tasks can be dragged out of a section) */}
+          {(() => {
+            const zone = sectionDropZone(null);
+            const showHeader = sections.length > 0 && ungrouped.length > 0;
+            return (
+              <Stack
+                gap="sm"
+                onDragOver={zone.onDragOver}
+                onDrop={zone.onDrop}
+                style={{
+                  borderRadius: 10,
+                  outline: zone.active ? '2px dashed var(--mantine-color-teal-7)' : 'none',
+                  outlineOffset: 4,
+                  minHeight: sections.length > 0 ? 8 : undefined,
+                }}
+              >
+                {showHeader && (
+                  <Text
+                    fw={700}
+                    tt="uppercase"
+                    size="sm"
+                    c="dark.2"
+                    style={{ letterSpacing: '0.04em' }}
+                  >
+                    No section
+                  </Text>
+                )}
+                {ungrouped.map(renderTask)}
+              </Stack>
+            );
+          })()}
 
           {!tasks.length && (
             <Text c="dark.2" py="sm">

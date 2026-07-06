@@ -103,10 +103,11 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
       reorder at `/api/projects/:id/sections`; tasks carry a `sectionId`
       (validated to the same project). UI groups tasks under section headers
       (rename/delete inline, per-section add-task, "No section" group, add-section
-      control); the task modal has a Section select. Task drag-reorder is now
-      scoped within a section. _Follow-ups:_ drag sections to reorder, and drag a
-      task across sections (move via the modal for now). Covered by
-      `server/test/sections.test.js`.
+      control); the task modal has a Section select. Full drag-and-drop: reorder
+      tasks within a section, **drag tasks across sections** (drop on a task or a
+      section's area), and **drag section headers to reorder** — all persisted and
+      optimistic. Covered by `server/test/sections.test.js` +
+      `client/src/components/TaskList.test.jsx` (within- and cross-section drag).
 - [ ] **17. Search**
 - [ ] **18. Comments / activity log**
 - [ ] **19. Project sharing (multi-user collaboration)**
