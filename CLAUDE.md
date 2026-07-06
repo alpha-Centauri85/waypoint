@@ -58,10 +58,15 @@ hashed with `bcryptjs` (pure JS — no native build). `requireAuth` guards
 protected routers by checking `req.session.userId`.
 
 **Data model (SQLite):** `users` 1—* `projects` 1—* `tasks` 1—* `subtasks`,
-each child with `ON DELETE CASCADE`. Tasks also carry a `priority` (0–4) and link
-many-to-many to a per-user label library (`labels` + `task_labels`); task API
-responses embed a `labels` array, and `labelIds` on create/update replaces a
-task's labels (ids the user doesn't own are ignored). Foreign keys are enforced per-connection
+each child with `ON DELETE CASCADE`. A project also 1—* `sections` (task
+groupings); `tasks.section_id` is a nullable FK with `ON DELETE SET NULL`
+(deleting a section ungroups its tasks). Tasks carry a `priority` (0–4) and link
+many-to-many to a per-user label library (`labels` + `task_labels`); the same
+pool tags projects via `project_labels`. Task/project API responses embed a
+`labels` array; `labelIds` on create/update replaces the labels (ids the user
+doesn't own are ignored). A task's `sectionId` is validated to the same project.
+Additive column changes use the idempotent `ensureColumn` helper in
+`db/index.js` (a fuller versioned-migration system is still on the roadmap). Foreign keys are enforced per-connection
 via `PRAGMA foreign_keys = ON` in `server/src/db/index.js`. **Ownership is
 enforced in every query**: project reads/writes are scoped by `user_id`, task
 queries by `project_id`, and subtask authorization joins task→project→user

@@ -13,6 +13,14 @@ import {
   updateTask,
 } from '../models/tasks.js';
 import { setTaskLabels } from '../models/labels.js';
+import { sectionBelongsToProject } from '../models/sections.js';
+
+// A task's sectionId must be null (ungrouped) or a section in the same project.
+function assertSectionInProject(sectionId, projectId) {
+  if (sectionId != null && !sectionBelongsToProject(sectionId, projectId)) {
+    throw badRequest('sectionId does not belong to this project');
+  }
+}
 
 // mergeParams lets this router read :projectId from the mount path.
 const router = Router({ mergeParams: true });
@@ -31,8 +39,9 @@ router.get('/', (req, res) => {
 });
 
 router.post('/', validateBody(createTaskSchema), (req, res) => {
-  const { title, status, dueDate, notes, priority, labelIds } = req.body;
-  const task = createTask(req.project.id, { title, status, dueDate, notes, priority });
+  const { title, status, dueDate, notes, priority, labelIds, sectionId } = req.body;
+  assertSectionInProject(sectionId, req.project.id);
+  const task = createTask(req.project.id, { title, status, dueDate, notes, priority, sectionId });
   if (labelIds) setTaskLabels(task.id, req.session.userId, labelIds);
   res.status(201).json(getTask(task.id, req.project.id));
 });
@@ -51,6 +60,7 @@ router.get('/:taskId', (req, res) => {
 });
 
 router.patch('/:taskId', validateBody(updateTaskSchema), (req, res) => {
+  if ('sectionId' in req.body) assertSectionInProject(req.body.sectionId, req.project.id);
   const task = updateTask(Number(req.params.taskId), req.project.id, req.body);
   if (!task) throw notFound('Task not found');
   if ('labelIds' in req.body) setTaskLabels(task.id, req.session.userId, req.body.labelIds);

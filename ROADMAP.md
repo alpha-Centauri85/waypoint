@@ -98,9 +98,15 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
       (foreign ids ignored), colored chips on rows. Labels are first-class (stable
       ids) so they can key future templates/modules. _Follow-ups:_ filter by
       label + a label management UI. Covered by `server/test/labels.test.js`.
-- [ ] **16b. Sections (task grouping)** — a named grouping inside a project
-      (`sections`; `tasks.section_id`). Useful on its own and the runtime form a
-      module instantiates into. Structural unlock for templates. See design note.
+- [x] **16b. Sections (task grouping)** — `sections` table + nullable
+      `tasks.section_id` (deleting a section ungroups its tasks). Full CRUD +
+      reorder at `/api/projects/:id/sections`; tasks carry a `sectionId`
+      (validated to the same project). UI groups tasks under section headers
+      (rename/delete inline, per-section add-task, "No section" group, add-section
+      control); the task modal has a Section select. Task drag-reorder is now
+      scoped within a section. _Follow-ups:_ drag sections to reorder, and drag a
+      task across sections (move via the modal for now). Covered by
+      `server/test/sections.test.js`.
 - [ ] **17. Search**
 - [ ] **18. Comments / activity log**
 - [ ] **19. Project sharing (multi-user collaboration)**

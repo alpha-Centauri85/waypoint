@@ -41,10 +41,24 @@ export const updateLabel = (id, fields) =>
   request(`/api/labels/${id}`, { method: 'PATCH', body: fields });
 export const deleteLabel = (id) => request(`/api/labels/${id}`, { method: 'DELETE' });
 
+// Sections (task groupings within a project)
+export const listSections = (projectId) => request(`/api/projects/${projectId}/sections`);
+export const createSection = (projectId, name) =>
+  request(`/api/projects/${projectId}/sections`, { method: 'POST', body: { name } });
+export const updateSection = (projectId, sectionId, fields) =>
+  request(`/api/projects/${projectId}/sections/${sectionId}`, { method: 'PATCH', body: fields });
+export const deleteSection = (projectId, sectionId) =>
+  request(`/api/projects/${projectId}/sections/${sectionId}`, { method: 'DELETE' });
+export const reorderSections = (projectId, orderedIds) =>
+  request(`/api/projects/${projectId}/sections/reorder`, {
+    method: 'PATCH',
+    body: { orderedIds },
+  });
+
 // Tasks
 export const listTasks = (projectId) => request(`/api/projects/${projectId}/tasks`);
-export const createTask = (projectId, title) =>
-  request(`/api/projects/${projectId}/tasks`, { method: 'POST', body: { title } });
+export const createTask = (projectId, title, extra = {}) =>
+  request(`/api/projects/${projectId}/tasks`, { method: 'POST', body: { title, ...extra } });
 export const updateTask = (projectId, taskId, fields) =>
   request(`/api/projects/${projectId}/tasks/${taskId}`, { method: 'PATCH', body: fields });
 export const deleteTask = (projectId, taskId) =>

@@ -12,6 +12,8 @@ const dueDate = z
   .nullish();
 const notes = z.string().trim().max(10000, 'is too long').nullish();
 const labelIds = z.array(z.number().int().positive());
+// A section id, or null to leave the task ungrouped.
+const sectionId = z.number().int().positive().nullable();
 
 export const createTaskSchema = z.object({
   title,
@@ -20,6 +22,7 @@ export const createTaskSchema = z.object({
   notes,
   priority: priority.optional(),
   labelIds: labelIds.optional(),
+  sectionId: sectionId.optional(),
 });
 
 // PATCH: every field optional; a supplied title must still be non-empty.
@@ -30,6 +33,7 @@ export const updateTaskSchema = z.object({
   notes,
   priority: priority.optional(),
   labelIds: labelIds.optional(),
+  sectionId: sectionId.optional(),
 });
 
 // Reorder: the full set of the project's task ids in their new order.

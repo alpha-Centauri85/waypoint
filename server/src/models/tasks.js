@@ -1,21 +1,26 @@
 import { db } from '../db/index.js';
 import { getLabelsForTask, labelsByTaskIds } from './labels.js';
 
-// New tasks append to the end of the project (position = current max + 1) so
-// manual ordering stays sensible; the first task in a project gets position 0.
+// New tasks append to the end of their section (position = max + 1 within the
+// same project + section); `section_id IS ?` treats NULL as the "ungrouped" group.
 const insert = db.prepare(
-  `INSERT INTO tasks (project_id, title, status, due_date, notes, priority, position)
-   VALUES (?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(position) + 1, 0) FROM tasks WHERE project_id = ?))`,
+  `INSERT INTO tasks (project_id, section_id, title, status, due_date, notes, priority, position)
+   VALUES (?, ?, ?, ?, ?, ?, ?,
+     (SELECT COALESCE(MAX(position) + 1, 0) FROM tasks WHERE project_id = ? AND section_id IS ?))`,
 );
 const listByProject = db.prepare(
   'SELECT * FROM tasks WHERE project_id = ? ORDER BY position, created_at',
 );
 const byId = db.prepare('SELECT * FROM tasks WHERE id = ? AND project_id = ?');
 const update = db.prepare(
-  `UPDATE tasks SET title = ?, status = ?, due_date = ?, notes = ?, priority = ?
+  `UPDATE tasks SET title = ?, status = ?, due_date = ?, notes = ?, priority = ?, section_id = ?, position = ?
    WHERE id = ? AND project_id = ?`,
 );
 const del = db.prepare('DELETE FROM tasks WHERE id = ? AND project_id = ?');
+// Next position at the end of a (project, section) group.
+const maxPosition = db.prepare(
+  'SELECT COALESCE(MAX(position) + 1, 0) AS p FROM tasks WHERE project_id = ? AND section_id IS ?',
+);
 
 const projectTaskIds = db.prepare('SELECT id FROM tasks WHERE project_id = ?');
 const setPosition = db.prepare('UPDATE tasks SET position = ? WHERE id = ? AND project_id = ?');
@@ -34,31 +39,33 @@ const ownedByUser = db.prepare(`
 
 export function createTask(
   projectId,
-  { title, status = 'todo', dueDate = null, notes = null, priority = 0 },
+  { title, status = 'todo', dueDate = null, notes = null, priority = 0, sectionId = null },
 ) {
   const { lastInsertRowid } = insert.run(
     projectId,
+    sectionId,
     title,
     status,
     dueDate,
     notes,
     priority,
     projectId,
+    sectionId,
   );
   return byId.get(lastInsertRowid, projectId);
 }
 
-// Reorder a project's tasks. `orderedIds` must be exactly the project's task ids
-// (a permutation) — otherwise returns null so the caller can reject the request
-// rather than leave positions half-written. Returns the reordered task list.
+// Reorder tasks by assigning position = index. `orderedIds` may be a subset of
+// the project's tasks (e.g. just one section's tasks) — positions are compared
+// within a group on the client, so per-group runs of 0..n are fine. Every id
+// must belong to the project and be unique, else null (nothing written).
 export function reorderTasks(projectId, orderedIds) {
-  const existing = projectTaskIds.all(projectId).map((r) => r.id);
-  const existingSet = new Set(existing);
-  const isPermutation =
-    orderedIds.length === existing.length &&
+  const existing = new Set(projectTaskIds.all(projectId).map((r) => r.id));
+  const valid =
+    orderedIds.length > 0 &&
     new Set(orderedIds).size === orderedIds.length &&
-    orderedIds.every((id) => existingSet.has(id));
-  if (!isPermutation) return null;
+    orderedIds.every((id) => existing.has(id));
+  if (!valid) return null;
   applyOrder(projectId, orderedIds);
   return withLabels(listByProject.all(projectId));
 }
@@ -93,6 +100,10 @@ export function updateTask(id, projectId, fields) {
   // Presence-based merge (not `?? current`) so an explicit null clears a
   // nullable field (e.g. removing a due date), while an omitted field is left
   // untouched. Validation guarantees title/status are never null when present.
+  const section_id = 'sectionId' in fields ? fields.sectionId : current.section_id;
+  // Moving to a different section drops the task at the end of that section.
+  const position =
+    section_id === current.section_id ? current.position : maxPosition.get(projectId, section_id).p;
   const merged = {
     title: 'title' in fields ? fields.title : current.title,
     status: 'status' in fields ? fields.status : current.status,
@@ -106,6 +117,8 @@ export function updateTask(id, projectId, fields) {
     merged.due_date,
     merged.notes,
     merged.priority,
+    section_id,
+    position,
     id,
     projectId,
   );
