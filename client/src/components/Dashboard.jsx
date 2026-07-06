@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import {
   ActionIcon,
+  Badge,
+  Center,
   Grid,
   Group,
-  NavLink,
   Paper,
   Stack,
   Text,
@@ -11,7 +12,7 @@ import {
   Title,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { FolderKanban, Pencil, Plus, Trash2 } from 'lucide-react';
 import { createProject, deleteProject, listProjects } from '../api.js';
 import TaskList from './TaskList.jsx';
 import ProjectEditModal from './ProjectEditModal.jsx';
@@ -41,7 +42,7 @@ export default function Dashboard() {
     setNewName('');
     setSelectedId(project.id);
     refresh();
-    notifications.show({ message: `Created “${project.name}”`, color: 'green' });
+    notifications.show({ message: `Created “${project.name}”`, color: 'teal' });
   }
 
   async function handleDelete(id) {
@@ -53,44 +54,36 @@ export default function Dashboard() {
 
   return (
     <>
-      <Grid>
+      <Grid gutter="lg">
         <Grid.Col span={{ base: 12, sm: 4, md: 3 }}>
-          <Paper withBorder p="md" radius="md">
-            <Title order={4} mb="sm">
-              Projects
-            </Title>
-            <Stack gap={2}>
+          <Paper withBorder p="md" radius="lg">
+            <Group justify="space-between" mb="md">
+              <Title order={4}>Projects</Title>
+              {projects.length > 0 && (
+                <Badge variant="light" color="gray" size="sm">
+                  {projects.length}
+                </Badge>
+              )}
+            </Group>
+
+            <Stack gap={4}>
               {projects.map((p) => (
-                <Group key={p.id} justify="space-between" gap={2} wrap="nowrap">
-                  <NavLink
-                    label={p.name}
-                    active={p.id === selectedId}
-                    onClick={() => setSelectedId(p.id)}
-                    style={{ borderRadius: 6 }}
-                  />
-                  <ActionIcon
-                    variant="subtle"
-                    aria-label="Edit project"
-                    onClick={() => setEditingProject(p)}
-                  >
-                    <Pencil size={15} />
-                  </ActionIcon>
-                  <ActionIcon
-                    variant="subtle"
-                    color="red"
-                    aria-label="Delete project"
-                    onClick={() => handleDelete(p.id)}
-                  >
-                    <Trash2 size={16} />
-                  </ActionIcon>
-                </Group>
+                <ProjectRow
+                  key={p.id}
+                  project={p}
+                  active={p.id === selectedId}
+                  onSelect={() => setSelectedId(p.id)}
+                  onEdit={() => setEditingProject(p)}
+                  onDelete={() => handleDelete(p.id)}
+                />
               ))}
               {!projects.length && (
-                <Text c="dimmed" size="sm">
-                  No projects yet
+                <Text c="dark.2" size="sm" py="xs">
+                  No projects yet. Add your first one below.
                 </Text>
               )}
             </Stack>
+
             <form onSubmit={handleCreate}>
               <Group gap="xs" mt="md" wrap="nowrap">
                 <TextInput
@@ -100,7 +93,7 @@ export default function Dashboard() {
                   style={{ flex: 1 }}
                 />
                 <ActionIcon type="submit" variant="filled" size="lg" aria-label="Add project">
-                  <Plus size={16} />
+                  <Plus size={18} />
                 </ActionIcon>
               </Group>
             </form>
@@ -108,11 +101,7 @@ export default function Dashboard() {
         </Grid.Col>
 
         <Grid.Col span={{ base: 12, sm: 8, md: 9 }}>
-          {selected ? (
-            <TaskList project={selected} />
-          ) : (
-            <Text c="dimmed">Create or select a project to get started.</Text>
-          )}
+          {selected ? <TaskList project={selected} /> : <EmptyState />}
         </Grid.Col>
       </Grid>
 
@@ -123,5 +112,67 @@ export default function Dashboard() {
         onSaved={refresh}
       />
     </>
+  );
+}
+
+function ProjectRow({ project, active, onSelect, onEdit, onDelete }) {
+  return (
+    <Group
+      gap={4}
+      wrap="nowrap"
+      onClick={onSelect}
+      style={{
+        cursor: 'pointer',
+        borderRadius: 8,
+        padding: '6px 8px 6px 10px',
+        backgroundColor: active ? 'var(--mantine-color-dark-5)' : 'transparent',
+        borderLeft: active ? '3px solid var(--mantine-color-teal-5)' : '3px solid transparent',
+      }}
+    >
+      <Text
+        size="sm"
+        fw={active ? 600 : 400}
+        c={active ? 'white' : 'dark.1'}
+        truncate
+        style={{ flex: 1 }}
+      >
+        {project.name}
+      </Text>
+      <ActionIcon
+        variant="subtle"
+        color="gray"
+        size="sm"
+        aria-label="Edit project"
+        onClick={(e) => {
+          e.stopPropagation();
+          onEdit();
+        }}
+      >
+        <Pencil size={14} />
+      </ActionIcon>
+      <ActionIcon
+        variant="subtle"
+        color="red"
+        size="sm"
+        aria-label="Delete project"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+      >
+        <Trash2 size={14} />
+      </ActionIcon>
+    </Group>
+  );
+}
+
+function EmptyState() {
+  return (
+    <Center h={320}>
+      <Stack align="center" gap="xs">
+        <FolderKanban size={40} color="var(--mantine-color-dark-3)" />
+        <Text c="dark.2">Create or select a project to get started.</Text>
+      </Stack>
+    </Center>
   );
 }

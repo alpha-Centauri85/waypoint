@@ -20,7 +20,8 @@ import Subtasks from './Subtasks.jsx';
 import TaskEditModal from './TaskEditModal.jsx';
 
 const STATUSES = ['todo', 'doing', 'done'];
-const STATUS_COLOR = { todo: 'gray', doing: 'blue', done: 'green' };
+const STATUS_COLOR = { todo: 'gray', doing: 'amber', done: 'teal' };
+const STATUS_LABEL = { todo: 'To do', doing: 'In progress', done: 'Done' };
 
 const STATUS_FILTERS = [
   { label: 'All', value: 'all' },
@@ -132,8 +133,12 @@ export default function TaskList({ project }) {
   return (
     <Stack>
       <div>
-        <Title order={3}>{project.name}</Title>
-        {project.description && <Text c="dimmed">{project.description}</Text>}
+        <Title order={2}>{project.name}</Title>
+        {project.description && (
+          <Text c="dark.2" mt={4}>
+            {project.description}
+          </Text>
+        )}
       </div>
 
       <form onSubmit={handleCreate}>
@@ -213,11 +218,12 @@ export default function TaskList({ project }) {
                 <Tooltip label="Click to change status" openDelay={400}>
                   <Badge
                     color={STATUS_COLOR[task.status]}
-                    variant="filled"
+                    variant={task.status === 'todo' ? 'light' : 'filled'}
+                    w={92}
                     style={{ cursor: 'pointer', flexShrink: 0 }}
                     onClick={() => cycleStatus(task)}
                   >
-                    {task.status}
+                    {STATUS_LABEL[task.status]}
                   </Badge>
                 </Tooltip>
                 <Text truncate>{task.title}</Text>

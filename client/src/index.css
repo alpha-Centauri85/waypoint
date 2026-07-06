@@ -3,4 +3,11 @@
 
 body {
   margin: 0;
+  background-color: #0e1621; /* brand navy, avoids a white flash before Mantine loads */
+}
+
+/* Subtle scrollbars that fit the dark theme. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2c3e52 transparent;
 }

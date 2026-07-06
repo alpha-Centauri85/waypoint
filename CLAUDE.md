@@ -101,13 +101,23 @@ queries by `project_id`, and subtask authorization joins task→project→user
   string via `dayjs`).
 
 **UI / design:** [Mantine](https://mantine.dev) v7 component library +
-`lucide-react` icons + `dayjs` (peer dep for `@mantine/dates`, used for the
-upcoming due-date picker). Build UIs from Mantine components rather than raw
+`lucide-react` icons + `dayjs`. Build UIs from Mantine components rather than raw
 HTML/CSS; toasts go through `notifications.show(...)` from `@mantine/notifications`.
-Mantine styles are imported once in `main.jsx`; `index.css` is intentionally
-minimal. `MantineProvider` lives in `App.jsx` (not `main.jsx`) so tests that
-render `<App />` get the theme context for free. `setupTests.js` polyfills
-`matchMedia` and `ResizeObserver`, which jsdom lacks and Mantine needs.
+
+The app follows a **defined brand system** (see `Logo design.png`). The Mantine
+theme lives in `client/src/theme.js`: brand navy mapped onto the `dark` scale
+(index 7 = app bg, 6 = cards, 5 = inputs/hover, 4 = borders), **teal** primary +
+**amber** secondary custom palettes, and the type scale (Satoshi headings, Inter
+body). It is **dark-only** — `App.jsx` sets `forceColorScheme="dark"`; do not
+reintroduce a light theme without a brief for it. Fonts are **self-hosted** (no
+CDN, so it works offline on the media server): Inter via `@fontsource-variable/inter`,
+Satoshi as woff2 in `src/assets/fonts/` (`satoshi.css`), both imported in
+`main.jsx`. The logo is `components/Logo.jsx` (inline-SVG mark + Satoshi wordmark);
+the signed-in shell (sticky brand header) is `AppFrame` inside `App.jsx`.
+`MantineProvider` (with the theme) lives in `App.jsx` so tests that render `<App />`
+get theme context for free. `setupTests.js` polyfills `matchMedia`/`ResizeObserver`.
+Prefer theme tokens (`c="dark.2"`, `color="teal"`, `var(--mantine-color-*)`) over
+hard-coded hex so the brand stays consistent.
 
 ## Adding features
 

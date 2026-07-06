@@ -1,17 +1,10 @@
 import { useEffect, useState } from 'react';
-import {
-  Button,
-  Center,
-  Container,
-  Group,
-  Loader,
-  MantineProvider,
-  Text,
-  Title,
-} from '@mantine/core';
+import { Box, Button, Center, Container, Loader, MantineProvider, Menu, Text } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
-import { LogOut } from 'lucide-react';
+import { ChevronDown, LogOut } from 'lucide-react';
+import { theme } from './theme.js';
 import { getMe, logout } from './api.js';
+import Logo from './components/Logo.jsx';
 import AuthForm from './components/AuthForm.jsx';
 import Dashboard from './components/Dashboard.jsx';
 
@@ -32,38 +25,68 @@ export default function App() {
   }
 
   return (
-    <MantineProvider defaultColorScheme="auto">
-      <Notifications />
-      <Container size="lg" py="md">
-        <Group justify="space-between" mb="lg">
-          <Title order={2}>Waypoint</Title>
-          {user && (
-            <Group gap="sm">
-              <Text size="sm" c="dimmed">
+    <MantineProvider theme={theme} forceColorScheme="dark">
+      <Notifications position="top-right" />
+      {loading ? (
+        <Center h="100vh">
+          <Loader color="teal" />
+        </Center>
+      ) : user ? (
+        <AppFrame user={user} onLogout={handleLogout}>
+          <Dashboard />
+        </AppFrame>
+      ) : (
+        <AuthForm onAuthed={setUser} />
+      )}
+    </MantineProvider>
+  );
+}
+
+// The signed-in shell: a sticky brand header over the working area.
+function AppFrame({ user, onLogout, children }) {
+  return (
+    <Box mih="100vh" bg="dark.7">
+      <Box
+        component="header"
+        h={64}
+        px="lg"
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          backgroundColor: 'rgba(14, 22, 33, 0.85)',
+          backdropFilter: 'blur(8px)',
+          borderBottom: '1px solid var(--mantine-color-dark-4)',
+        }}
+      >
+        <Logo size={26} />
+        <Menu shadow="md" width={200} position="bottom-end">
+          <Menu.Target>
+            <Button
+              variant="subtle"
+              color="gray"
+              size="sm"
+              rightSection={<ChevronDown size={15} />}
+            >
+              <Text size="sm" c="dark.1">
                 {user.email}
               </Text>
-              <Button
-                variant="light"
-                size="xs"
-                leftSection={<LogOut size={14} />}
-                onClick={handleLogout}
-              >
-                Log out
-              </Button>
-            </Group>
-          )}
-        </Group>
+            </Button>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item leftSection={<LogOut size={15} />} onClick={onLogout}>
+              Log out
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
+      </Box>
 
-        {loading ? (
-          <Center h={200}>
-            <Loader />
-          </Center>
-        ) : user ? (
-          <Dashboard />
-        ) : (
-          <AuthForm onAuthed={setUser} />
-        )}
+      <Container size="xl" py="xl">
+        {children}
       </Container>
-    </MantineProvider>
+    </Box>
   );
 }

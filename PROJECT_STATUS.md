@@ -118,6 +118,16 @@ cp server/.env.example server/.env   # set a real SESSION_SECRET
 npm run dev                          # http://localhost:5173
 ```
 
+## Visual design
+
+The app now implements the **Waypoint brand system** (from `Logo design.png`):
+dark-only navy UI, teal primary + amber secondary, Satoshi (display) + Inter
+(body), both self-hosted (offline-friendly). Theme in `client/src/theme.js`
+(`forceColorScheme="dark"` in `App.jsx`); inline-SVG logo mark in
+`components/Logo.jsx`; sticky brand header (`AppFrame`) wraps the dashboard.
+Auth, sidebar, task cards, status pills (todo=gray / doing=amber / done=teal),
+and modals are all restyled to brand. Verified via headless-Chromium screenshots.
+
 ## Design foundation (installed)
 
 Mantine v7 (`@mantine/core`, `@mantine/hooks`, `@mantine/dates`,
