@@ -13,6 +13,7 @@ import labelsRouter from './routes/labels.js';
 import projectsRouter from './routes/projects.js';
 import sectionsRouter from './routes/sections.js';
 import tasksRouter from './routes/tasks.js';
+import templatesRouter from './routes/templates.js';
 import subtasksRouter from './routes/subtasks.js';
 
 const SqliteStore = SqliteStoreFactory(session);
@@ -78,6 +79,7 @@ export function createApp() {
   app.use('/api/health', healthRouter);
   app.use('/api/auth', authRouter);
   app.use('/api/labels', labelsRouter);
+  app.use('/api/templates', templatesRouter);
   app.use('/api/projects', projectsRouter);
   app.use('/api/projects/:projectId/sections', sectionsRouter);
   app.use('/api/projects/:projectId/tasks', tasksRouter);

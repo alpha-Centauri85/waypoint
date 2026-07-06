@@ -41,6 +41,15 @@ export const updateLabel = (id, fields) =>
   request(`/api/labels/${id}`, { method: 'PATCH', body: fields });
 export const deleteLabel = (id) => request(`/api/labels/${id}`, { method: 'DELETE' });
 
+// Templates (reusable project blueprints)
+export const listTemplates = () => request('/api/templates');
+export const getTemplate = (id) => request(`/api/templates/${id}`);
+export const createTemplateFromProject = (projectId, name) =>
+  request('/api/templates/from-project', { method: 'POST', body: { projectId, name } });
+export const instantiateTemplate = (id, name) =>
+  request(`/api/templates/${id}/instantiate`, { method: 'POST', body: { name } });
+export const deleteTemplate = (id) => request(`/api/templates/${id}`, { method: 'DELETE' });
+
 // Sections (task groupings within a project)
 export const listSections = (projectId) => request(`/api/projects/${projectId}/sections`);
 export const createSection = (projectId, name) =>

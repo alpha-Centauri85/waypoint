@@ -74,6 +74,46 @@ CREATE TABLE IF NOT EXISTS project_labels (
 );
 CREATE INDEX IF NOT EXISTS idx_project_labels_label ON project_labels(label_id);
 
+-- Reusable project blueprints. A template is an ordered set of modules; a module
+-- is a reusable "section blueprint" holding task blueprints. Instantiating a
+-- template builds a project with a section per module. See
+-- docs/labels-sections-templates.md.
+CREATE TABLE IF NOT EXISTS templates (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  description TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_templates_user ON templates(user_id);
+
+CREATE TABLE IF NOT EXISTS modules (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name       TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_modules_user ON modules(user_id);
+
+CREATE TABLE IF NOT EXISTS module_tasks (
+  id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  module_id INTEGER NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
+  title     TEXT NOT NULL,
+  status    TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'doing', 'done')),
+  priority  INTEGER NOT NULL DEFAULT 0,
+  notes     TEXT,
+  position  INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_module_tasks_module ON module_tasks(module_id);
+
+CREATE TABLE IF NOT EXISTS template_modules (
+  template_id INTEGER NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
+  module_id   INTEGER NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
+  position    INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (template_id, module_id)
+);
+CREATE INDEX IF NOT EXISTS idx_template_modules_module ON template_modules(module_id);
+
 CREATE TABLE IF NOT EXISTS subtasks (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   task_id    INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
