@@ -20,6 +20,17 @@ const forTask = db.prepare(`
   ORDER BY l.name COLLATE NOCASE
 `);
 
+const attachProject = db.prepare(
+  'INSERT OR IGNORE INTO project_labels (project_id, label_id) VALUES (?, ?)',
+);
+const detachAllProject = db.prepare('DELETE FROM project_labels WHERE project_id = ?');
+const forProject = db.prepare(`
+  SELECT l.id, l.name, l.color FROM labels l
+  JOIN project_labels pl ON pl.label_id = l.id
+  WHERE pl.project_id = ?
+  ORDER BY l.name COLLATE NOCASE
+`);
+
 export function listLabels(userId) {
   return listByUser.all(userId);
 }
@@ -73,4 +84,31 @@ export const setTaskLabels = db.transaction((taskId, userId, labelIds) => {
   const owned = new Set(ownedIds.all(userId).map((r) => r.id));
   detachAll.run(taskId);
   for (const id of labelIds) if (owned.has(id)) attach.run(taskId, id);
+});
+
+// Same, for projects. Labels come from the one shared pool (see design note).
+export function getLabelsForProject(projectId) {
+  return forProject.all(projectId);
+}
+
+export function labelsByProjectIds(projectIds) {
+  if (!projectIds.length) return {};
+  const placeholders = projectIds.map(() => '?').join(',');
+  const rows = db
+    .prepare(
+      `SELECT pl.project_id, l.id, l.name, l.color FROM labels l
+       JOIN project_labels pl ON pl.label_id = l.id
+       WHERE pl.project_id IN (${placeholders})
+       ORDER BY l.name COLLATE NOCASE`,
+    )
+    .all(...projectIds);
+  const map = {};
+  for (const { project_id, ...label } of rows) (map[project_id] ??= []).push(label);
+  return map;
+}
+
+export const setProjectLabels = db.transaction((projectId, userId, labelIds) => {
+  const owned = new Set(ownedIds.all(userId).map((r) => r.id));
+  detachAllProject.run(projectId);
+  for (const id of labelIds) if (owned.has(id)) attachProject.run(projectId, id);
 });

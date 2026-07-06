@@ -49,6 +49,15 @@ CREATE TABLE IF NOT EXISTS task_labels (
 );
 CREATE INDEX IF NOT EXISTS idx_task_labels_label ON task_labels(label_id);
 
+-- Labels also annotate projects (same shared pool; scope lives in the
+-- association, not a flag on the label — see docs/labels-sections-templates.md).
+CREATE TABLE IF NOT EXISTS project_labels (
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  label_id   INTEGER NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
+  PRIMARY KEY (project_id, label_id)
+);
+CREATE INDEX IF NOT EXISTS idx_project_labels_label ON project_labels(label_id);
+
 CREATE TABLE IF NOT EXISTS subtasks (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   task_id    INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
