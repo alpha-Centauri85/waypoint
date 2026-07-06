@@ -40,10 +40,17 @@ Running a single test (Vitest):
 
 **Client ↔ server contract:** the client calls the API under `/api`. In dev,
 Vite proxies `/api` → `http://localhost:3000` (`client/vite.config.js`), so
-requests are same-origin and the session cookie flows without CORS config. In
-other environments the client reads `VITE_API_URL`; the server restricts CORS to
-`CLIENT_ORIGIN` with `credentials: true`, and cookies become `secure` when
-`NODE_ENV=production` (so serve over HTTPS there).
+requests are same-origin and the session cookie flows without CORS config.
+
+**Production (single origin):** with `NODE_ENV=production` (or `SERVE_CLIENT=true`)
+the server serves the built `client/dist` plus an SPA fallback (any non-`/api`
+GET → `index.html`, registered after the `/api` 404 so the API never returns
+HTML), and skips CORS since everything is same-origin. A SPA-tuned CSP is applied
+only when serving the client. Cookie `secure` (`SECURE_COOKIES`) and Express
+`trust proxy` (`TRUST_PROXY`) are config-driven so it can run behind a
+TLS-terminating reverse proxy. Split-origin deploys (separate client host) still
+work: leave `SERVE_CLIENT` off, set `VITE_API_URL`, and CORS is restricted to
+`CLIENT_ORIGIN` with `credentials: true`.
 
 **Auth & sessions:** cookie sessions via `express-session`, stored in SQLite
 (`better-sqlite3-session-store`) except under test (in-memory). Passwords are

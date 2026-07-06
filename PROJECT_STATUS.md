@@ -116,7 +116,15 @@ semicolons, trailing commas, 100 cols); SQLite has no boolean → `done` stored 
 cd ~/waypoint
 cp server/.env.example server/.env   # set a real SESSION_SECRET
 npm run dev                          # http://localhost:5173
+
+# Production (single origin — Express serves the built client):
+npm run build                        # -> client/dist
+NODE_ENV=production npm start         # serves app + API on http://localhost:3000
 ```
+
+In production Express serves `client/dist` with an SPA fallback (no CORS needed).
+`secure` cookies require HTTPS — behind a TLS reverse proxy set `TRUST_PROXY=1`;
+for a quick plain-HTTP LAN trial set `SECURE_COOKIES=false`.
 
 ## Visual design
 

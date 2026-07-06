@@ -71,8 +71,11 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Phase 3 — Deploy on the Windows media server (can start after Phase 1)
 
-- [ ] **12. Serve the client from Express in production** (S) — single origin
-      removes CORS/HTTPS cookie friction. Big self-hosting simplification.
+- [x] **12. Serve the client from Express in production** (S) — with
+      `NODE_ENV=production` (or `SERVE_CLIENT=true`), Express serves `client/dist` + an SPA fallback (non-`/api` paths → `index.html`); CORS is skipped
+      (same-origin) and a SPA-tuned CSP is applied. Cookie `secure` and
+      `trust proxy` are now config-driven (`SECURE_COOKIES`, `TRUST_PROXY`) for
+      running behind a TLS proxy. Build with `npm run build`, then `npm start`.
 - [ ] **13. Run as a Windows service** (M) — `nssm` or `node-windows` so it
       survives reboots.
 - [ ] **14. HTTPS** (M) — reverse proxy (Caddy/IIS) so `secure` session cookies
@@ -90,8 +93,9 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Recommended next step
 
-Phases 0 and 1 complete; the brand design is implemented; Phase 2 steps 9–10
-done. Best next move is **Phase 3 — deploy on the Windows media server** (serve
-the client from Express, run as a Windows service, HTTPS, SQLite backups) so it's
-actually usable. Optional polish still open: step 11 (optimistic UI) and Phase 4
-features (labels, search, comments, sharing).
+Phases 0–1 complete; brand design implemented; Phase 2 steps 9–10 done; Phase 3
+step 12 (single-origin serving) done. Next in Phase 3: **step 15 (SQLite backup
+job)** — do before real data accumulates — then **13 (Windows service)** and
+**14 (HTTPS via reverse proxy)** to finish the deploy. Then either **Phase 4**
+features (labels, search, comments, sharing — needs the bigger product roadmap we
+discussed) or step 11 (optimistic UI) polish.
