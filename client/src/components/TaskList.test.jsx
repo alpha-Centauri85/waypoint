@@ -263,6 +263,27 @@ test('dragging a task into another section PATCHes its sectionId and reorders', 
   });
 });
 
+test('clicking a task status opens a menu to pick any status', async () => {
+  const task = { id: 5, title: 'Pick me', status_id: 101, due_date: null, notes: null, labels: [] };
+  const calls = [];
+  stubFetch(calls, (u, opts) => {
+    if (u.endsWith('/tasks')) return jsonResponse(200, [task]);
+    if (opts.method === 'PATCH') return jsonResponse(200, { ...task, status_id: 103 });
+    return null;
+  });
+
+  renderWithProviders(<TaskList project={{ id: 1, name: 'P' }} />);
+  // The row badge shows the current status; click it to open the picker.
+  fireEvent.click(await screen.findByLabelText(/^Status: To do/));
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'Done' }));
+
+  await waitFor(() => {
+    const patch = calls.find((c) => c.opts.method === 'PATCH' && c.url.endsWith('/tasks/5'));
+    expect(patch).toBeTruthy();
+    expect(JSON.parse(patch.opts.body)).toEqual({ statusId: 103 });
+  });
+});
+
 test('board view: dragging a card to another column changes its status', async () => {
   const tasks = [
     {

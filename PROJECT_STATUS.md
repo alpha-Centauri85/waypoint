@@ -53,7 +53,7 @@ Built with the **Mantine** v7 component library + **lucide-react** icons (and
 `dayjs` for the upcoming date picker). `App.jsx` wraps everything in
 `MantineProvider` + `Notifications`, checks `/auth/me`, then renders
 login/register (`AuthForm`) or the `Dashboard` (projects sidebar). `TaskList`
-shows tasks with a click-to-cycle status badge (todo→doing→done); `Subtasks` are
+shows tasks with a click-to-pick status badge (choose any status); `Subtasks` are
 checklist items. All backend calls funnel through `client/src/api.js` (with
 `credentials: 'include'`). Auto light/dark theme via Mantine.
 
@@ -112,7 +112,7 @@ result opens the owning project.
 **Custom statuses + Settings:** statuses are **per-user, user-defined** workflow
 states (`statuses` table + `tasks.status_id`), seeded lazily (To do / In progress
 / Done) and backfilled from legacy status text by key. A `StatusesProvider`
-context feeds board columns, the status filter/sort, the cycle badge, the edit
+context feeds board columns, the status filter/sort, the row status picker, the edit
 select, search, and progress/overdue (via each status's `is_done`). Managed in a
 new **Settings screen** (`SettingsScreen`, from the header menu) alongside global
 label management. Migrates to per-account when sharing lands. Templates keep the

@@ -161,7 +161,7 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
       FK; defaults are seeded lazily (on `/me` / first status access) and legacy
       `tasks.status` text is backfilled by key. A `StatusesProvider` (React context)
       loads them once; board columns, the status filter, status sort, the
-      click-to-cycle badge, the edit-modal select, search, and **progress %/overdue
+      click-to-pick status menu, the edit-modal select, search, and **progress %/overdue
       (via `is_done`)** all derive from it. Managed in Settings (22): add / rename /
       recolor / mark-done / reorder / delete (delete reassigns tasks, refuses the
       last). Templates keep the default keys (mapped on instantiate) until templates
