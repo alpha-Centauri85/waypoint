@@ -206,3 +206,16 @@ CREATE TABLE IF NOT EXISTS activities (
 );
 CREATE INDEX IF NOT EXISTS idx_activities_project ON activities(project_id, id);
 CREATE INDEX IF NOT EXISTS idx_activities_user ON activities(user_id, id);
+
+-- User-authored comments on a task (a discussion thread). Cascades with its task.
+-- user_id is the author (kept for multi-user sharing later); updated_at is set on
+-- edit. See routes/comments.js.
+CREATE TABLE IF NOT EXISTS comments (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  task_id    INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  body       TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_comments_task ON comments(task_id, id);
