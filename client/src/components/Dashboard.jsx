@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   ActionIcon,
   Badge,
+  Box,
   Button,
   Center,
   Grid,
@@ -21,6 +22,7 @@ import { notifyError } from '../notify.js';
 import TaskList from './TaskList.jsx';
 import ProjectEditModal from './ProjectEditModal.jsx';
 import TemplatesModal from './TemplatesModal.jsx';
+import SearchBar from './SearchBar.jsx';
 
 export default function Dashboard() {
   const [projects, setProjects] = useState([]);
@@ -75,6 +77,10 @@ export default function Dashboard() {
 
   return (
     <>
+      <Box maw={520} mb="lg">
+        <SearchBar onSelectProject={(id) => setSelectedId(id)} />
+      </Box>
+
       <Grid gutter="lg">
         <Grid.Col span={{ base: 12, sm: 4, md: 3 }}>
           <Paper withBorder p="md" radius="lg">
