@@ -92,8 +92,11 @@ as a template** (each section → a module; ungrouped tasks → a "General" modu
 and **start a new project from a template** (instantiates a section per module
 with tasks copied in, fields preserved). API under `/api/templates`; UI is "Save
 as template" (project actions menu) + a "Start from a template" picker in the
-sidebar. Follow-ups: a dedicated module/template editor and carrying
-labels/due-dates into blueprints.
+sidebar. Templates can also be **created from scratch and edited** in a full editor
+(`TemplateEditorModal`: name/description + add/rename/delete modules and their
+tasks with status/priority), saved as one full-structure PATCH the server
+rebuilds transactionally. Follow-ups: reorder in the editor, reuse a module
+across templates, and carry labels/due-dates into blueprints.
 
 **Board (Kanban) view:** a List/Board toggle per project. The board shows status
 columns (To do / In progress / Done) with counts; compact cards (priority, due,

@@ -127,16 +127,19 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
 - [ ] **18. Comments / activity log**
 - [ ] **19. Project sharing (multi-user collaboration)**
 - [ ] **20. Due-date notifications / reminders**
-- [~] **21. Templates & modules** — reusable project blueprints composed of
-  modules (saved sections). Model: `templates` → `template_modules` →
-  `modules` → `module_tasks`. **Save a project as a template** (sections →
-  modules, ungrouped → a "General" module) and **start a new project from a
-  template** (instantiates sections + tasks). API under `/api/templates`
-  (`from-project`, `:id/instantiate`, list/get/delete). UI: "Save as template"
-  in the project actions menu + "Start from a template" picker in the sidebar.
-  Covered by `server/test/templates.test.js`. _Follow-ups:_ a dedicated
-  module/template editor (edit modules, reorder, reuse a module across
-  templates), and carrying labels/due dates into blueprints.
+- [x] **21. Templates & modules** — reusable project blueprints composed of
+      modules (saved sections). Model: `templates` → `template_modules` →
+      `modules` → `module_tasks`. Create from scratch or **save a project as a
+      template** (sections → modules, ungrouped → a "General" module); **edit** in a
+      full editor (`TemplateEditorModal`: name/description, add/rename/delete modules
+      and their tasks with status + priority — saved as one full-structure PATCH the
+      server rebuilds transactionally); **start a new project from a template**
+      (instantiates sections + tasks). API under `/api/templates` (POST, `PATCH :id`,
+      `from-project`, `:id/instantiate`, list/get/delete). UI: project actions menu +
+      a Templates modal (new/use/edit/delete). Covered by
+      `server/test/templates.test.js`. _Follow-ups:_ reorder modules/tasks in the
+      editor, reuse a module across templates, and carry labels/due dates into
+      blueprints.
 
 ## Recommended next step
 

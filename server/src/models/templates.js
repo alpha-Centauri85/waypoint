@@ -11,7 +11,13 @@ const insertTemplate = db.prepare(
   'INSERT INTO templates (user_id, name, description) VALUES (?, ?, ?)',
 );
 const templateById = db.prepare('SELECT * FROM templates WHERE id = ? AND user_id = ?');
+const updateTemplateRow = db.prepare(
+  'UPDATE templates SET name = ?, description = ? WHERE id = ? AND user_id = ?',
+);
 const delTemplate = db.prepare('DELETE FROM templates WHERE id = ? AND user_id = ?');
+const moduleIdsForTemplate = db.prepare(
+  'SELECT module_id FROM template_modules WHERE template_id = ?',
+);
 const insertModule = db.prepare('INSERT INTO modules (user_id, name) VALUES (?, ?)');
 const insertModuleTask = db.prepare(
   `INSERT INTO module_tasks (module_id, title, status, priority, notes, position)
@@ -65,6 +71,54 @@ export function deleteTemplate(id, userId) {
   return delTemplate.run(id, userId).changes > 0;
 }
 
+// Replace a template's modules (and their tasks) with the given structure.
+// Because modules are template-owned here, wiping + rebuilding is the simplest
+// correct save for the editor. Must run inside a transaction.
+function replaceModules(templateId, userId, modules) {
+  const existing = moduleIdsForTemplate.all(templateId).map((r) => r.module_id);
+  if (existing.length) {
+    const placeholders = existing.map(() => '?').join(',');
+    // Cascades remove module_tasks and template_modules rows.
+    db.prepare(`DELETE FROM modules WHERE user_id = ? AND id IN (${placeholders})`).run(
+      userId,
+      ...existing,
+    );
+  }
+  modules.forEach((m, i) => {
+    const moduleId = insertModule.run(userId, m.name).lastInsertRowid;
+    linkModule.run(templateId, moduleId, i);
+    (m.tasks ?? []).forEach((t, j) =>
+      insertModuleTask.run(
+        moduleId,
+        t.title,
+        t.status ?? 'todo',
+        t.priority ?? 0,
+        t.notes ?? null,
+        j,
+      ),
+    );
+  });
+}
+
+// Create a template from an explicit structure (blank, or authored in the editor).
+export const createTemplate = db.transaction(
+  (userId, { name, description = null, modules = [] }) => {
+    const templateId = insertTemplate.run(userId, name, description).lastInsertRowid;
+    replaceModules(templateId, userId, modules);
+    return oneWithCounts.get(templateId, userId);
+  },
+);
+
+// Replace a template's name/description and its whole module structure.
+export const updateTemplate = db.transaction(
+  (userId, id, { name, description = null, modules = [] }) => {
+    if (!templateById.get(id, userId)) return null;
+    updateTemplateRow.run(name, description, id, userId);
+    replaceModules(id, userId, modules);
+    return oneWithCounts.get(id, userId);
+  },
+);
+
 // Capture an existing project as a template: each section becomes a module, and
 // ungrouped tasks (if any) become a trailing "General" module. Returns the new
 // template (with counts). Transactional so a partial template is never left.
@@ -72,29 +126,23 @@ export const createTemplateFromProject = db.transaction((userId, projectId, name
   const project = getProject(projectId, userId);
   if (!project) return null;
 
-  const templateId = insertTemplate.run(userId, name, project.description ?? null).lastInsertRowid;
   const sections = listSections(projectId);
   const allTasks = listTasks(projectId);
+  const asBlueprint = (t) => ({
+    title: t.title,
+    status: t.status,
+    priority: t.priority,
+    notes: t.notes,
+  });
 
-  let modulePos = 0;
-  const addModule = (moduleName, tasks) => {
-    const moduleId = insertModule.run(userId, moduleName).lastInsertRowid;
-    linkModule.run(templateId, moduleId, modulePos++);
-    tasks.forEach((t, i) =>
-      insertModuleTask.run(moduleId, t.title, t.status, t.priority ?? 0, t.notes ?? null, i),
-    );
-  };
-
-  for (const section of sections) {
-    addModule(
-      section.name,
-      allTasks.filter((t) => t.section_id === section.id),
-    );
-  }
+  const modules = sections.map((s) => ({
+    name: s.name,
+    tasks: allTasks.filter((t) => t.section_id === s.id).map(asBlueprint),
+  }));
   const ungrouped = allTasks.filter((t) => (t.section_id ?? null) === null);
-  if (ungrouped.length) addModule('General', ungrouped);
+  if (ungrouped.length) modules.push({ name: 'General', tasks: ungrouped.map(asBlueprint) });
 
-  return oneWithCounts.get(templateId, userId);
+  return createTemplate(userId, { name, description: project.description ?? null, modules });
 });
 
 // Build a new project from a template: a section per module, tasks copied in.
