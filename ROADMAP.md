@@ -135,6 +135,19 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
       project's ⋮ menu and has no top-level "add label"). Later tenants: custom
       statuses (23), account/password, and app preferences. Keep the existing
       inline label-create in the pickers.
+- [ ] **24. Module library + Templates workspace** (L) — promote modules from
+      template-private copies to a **reusable library** with its own section
+      (its own screen, sibling to Settings). Manage modules independently:
+      **bulk-create** (enter several names at once), edit, delete, and **assign
+      labels** (shared label pool → a new `module_labels` join; scope lives in the
+      association, per `docs/labels-sections-templates.md`) so the library is
+      searchable/filterable. Templates then **compose from the library** — link
+      modules + order them (`template_modules` already supports this) — plus
+      one-off modules. **Key change:** the editor moves from full-replace saving to
+      **link/unlink**, since a shared module edited once must update every template
+      that references it (that reach is the point, but decide it explicitly:
+      shared library vs template-private copies). Depends on / extends 21;
+      pairs with the Settings screen (22).
 - [ ] **23. Custom statuses (workflow states)** (L) — replace the hardcoded
       `todo`/`doing`/`done` with user-defined states. Sketch: a `statuses` table
       (name, color, `position`, and an `is_done`/terminal flag) and `tasks`
