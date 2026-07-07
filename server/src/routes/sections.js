@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/requireAuth.js';
-import { badRequest, notFound } from '../lib/errors.js';
+import { badRequest, forbidden, notFound } from '../lib/errors.js';
 import { validateBody } from '../lib/validate.js';
-import { getProject } from '../models/projects.js';
+import { getProjectAccess } from '../models/members.js';
 import {
   createSection,
   deleteSection,
@@ -20,11 +20,19 @@ import {
 const router = Router({ mergeParams: true });
 router.use(requireAuth);
 
-// Authorize the parent project once for every section route below.
+// Authorize the parent project once for every section route below (owner/member).
 router.use((req, res, next) => {
-  const project = getProject(Number(req.params.projectId), req.session.userId);
-  if (!project) throw notFound('Project not found');
-  req.project = project;
+  const access = getProjectAccess(Number(req.params.projectId), req.session.userId);
+  if (!access) throw notFound('Project not found');
+  req.project = access.project;
+  req.role = access.role;
+  next();
+});
+
+// Viewers are read-only.
+router.use((req, res, next) => {
+  if (req.method !== 'GET' && req.role === 'viewer')
+    throw forbidden('You have read-only access to this project');
   next();
 });
 

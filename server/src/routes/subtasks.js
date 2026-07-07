@@ -1,20 +1,26 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/requireAuth.js';
-import { notFound } from '../lib/errors.js';
+import { forbidden, notFound } from '../lib/errors.js';
 import { validateBody } from '../lib/validate.js';
 import { createSubtaskSchema, updateSubtaskSchema } from '../schemas/subtasks.js';
-import { getTaskForUser } from '../models/tasks.js';
+import { getTaskById } from '../models/tasks.js';
+import { getProjectAccess } from '../models/members.js';
 import { createSubtask, deleteSubtask, listSubtasks, updateSubtask } from '../models/subtasks.js';
 
 // mergeParams lets this router read :taskId from the mount path.
 const router = Router({ mergeParams: true });
 router.use(requireAuth);
 
-// Authorize the parent task (must belong to a project owned by the user).
+// Authorize via the task's project (owner or member). Addressed by task id alone,
+// so we resolve the task, then check project access.
 router.use((req, res, next) => {
-  const task = getTaskForUser(Number(req.params.taskId), req.session.userId);
-  if (!task) throw notFound('Task not found');
+  const task = getTaskById(Number(req.params.taskId));
+  const access = task && getProjectAccess(task.project_id, req.session.userId);
+  if (!access) throw notFound('Task not found');
+  if (req.method !== 'GET' && access.role === 'viewer')
+    throw forbidden('You have read-only access to this project');
   req.task = task;
+  req.role = access.role;
   next();
 });
 
