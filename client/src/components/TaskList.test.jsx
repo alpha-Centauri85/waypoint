@@ -109,6 +109,17 @@ describe('arrangeTasks', () => {
     arrangeTasks(input, 'all', 'title');
     expect(input.map((t) => t.id)).toEqual([1, 2, 3]);
   });
+
+  test('label filter keeps tasks carrying any selected label', () => {
+    const labelled = [
+      { id: 1, title: 'a', status: 'todo', due_date: null, labels: [{ id: 5 }] },
+      { id: 2, title: 'b', status: 'todo', due_date: null, labels: [{ id: 6 }] },
+      { id: 3, title: 'c', status: 'todo', due_date: null, labels: [] },
+    ];
+    expect(arrangeTasks(labelled, 'all', 'default', [5]).map((t) => t.id)).toEqual([1]);
+    expect(arrangeTasks(labelled, 'all', 'default', [5, 6]).map((t) => t.id)).toEqual([1, 2]);
+    expect(arrangeTasks(labelled, 'all', 'default', []).map((t) => t.id)).toEqual([1, 2, 3]);
+  });
 });
 
 describe('moveTask', () => {

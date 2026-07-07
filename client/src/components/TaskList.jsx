@@ -4,10 +4,13 @@ import {
   Badge,
   Button,
   Center,
+  Checkbox,
+  ColorSwatch,
   Group,
   Loader,
   Menu,
   Modal,
+  Popover,
   Progress,
   SegmentedControl,
   Select,
@@ -24,6 +27,8 @@ import {
   LayoutTemplate,
   Pencil,
   Plus,
+  Tag,
+  Tags,
   Trash2,
   X,
 } from 'lucide-react';
@@ -45,6 +50,9 @@ import { notifyError } from '../notify.js';
 import TaskCard from './TaskCard.jsx';
 import TaskBoard from './TaskBoard.jsx';
 import TaskEditModal from './TaskEditModal.jsx';
+import LabelManagerModal from './LabelManagerModal.jsx';
+
+const labelSwatch = (c) => `var(--mantine-color-${c}-6)`;
 
 const STATUSES = ['todo', 'doing', 'done'];
 
@@ -63,11 +71,15 @@ const SORT_OPTIONS = [
   { value: 'title', label: 'Title' },
 ];
 
-// Apply the current status filter and sort. Due dates are ISO strings
+// Apply the status filter, label filter, and sort. Due dates are ISO strings
 // (YYYY-MM-DD), which sort chronologically as plain strings; tasks without a due
-// date sort last. Sorting is non-mutating (works on a copy). Exported for tests.
-export function arrangeTasks(tasks, statusFilter, sortBy) {
-  const filtered = statusFilter === 'all' ? tasks : tasks.filter((t) => t.status === statusFilter);
+// date sort last. Sorting is non-mutating (works on a copy). `labelIds` keeps
+// tasks carrying any of the selected labels. Exported for tests.
+export function arrangeTasks(tasks, statusFilter, sortBy, labelIds = []) {
+  let filtered = statusFilter === 'all' ? tasks : tasks.filter((t) => t.status === statusFilter);
+  if (labelIds.length) {
+    filtered = filtered.filter((t) => (t.labels ?? []).some((l) => labelIds.includes(l.id)));
+  }
   const sorted = [...filtered];
   if (sortBy === 'due') {
     sorted.sort((a, b) => {
@@ -111,8 +123,10 @@ export default function TaskList({ project, onTasksChanged }) {
   const [editingSectionId, setEditingSectionId] = useState(null);
   const [editingSectionName, setEditingSectionName] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [labelFilter, setLabelFilter] = useState([]); // label ids
   const [sortBy, setSortBy] = useState('default');
   const [view, setView] = useState('list'); // 'list' | 'board'
+  const [manageLabelsOpen, setManageLabelsOpen] = useState(false);
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const [draggedSectionId, setDraggedSectionId] = useState(null);
@@ -123,9 +137,22 @@ export default function TaskList({ project, onTasksChanged }) {
   const [savingTemplate, setSavingTemplate] = useState(false);
 
   const visibleTasks = useMemo(
-    () => arrangeTasks(tasks, statusFilter, sortBy),
-    [tasks, statusFilter, sortBy],
+    () => arrangeTasks(tasks, statusFilter, sortBy, labelFilter),
+    [tasks, statusFilter, sortBy, labelFilter],
   );
+
+  // Board applies the label filter but not the status filter (columns = status).
+  const boardTasks = useMemo(
+    () => arrangeTasks(tasks, 'all', 'default', labelFilter),
+    [tasks, labelFilter],
+  );
+
+  // Labels available to filter by = those actually used in this project.
+  const availableLabels = useMemo(() => {
+    const byId = new Map();
+    for (const t of tasks) for (const l of t.labels ?? []) byId.set(l.id, l);
+    return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [tasks]);
 
   const doneCount = tasks.filter((t) => t.status === 'done').length;
   const pct = tasks.length ? Math.round((doneCount / tasks.length) * 100) : 0;
@@ -433,6 +460,9 @@ export default function TaskList({ project, onTasksChanged }) {
               >
                 Save as template
               </Menu.Item>
+              <Menu.Item leftSection={<Tags size={15} />} onClick={() => setManageLabelsOpen(true)}>
+                Manage labels
+              </Menu.Item>
             </Menu.Dropdown>
           </Menu>
         </Group>
@@ -470,6 +500,13 @@ export default function TaskList({ project, onTasksChanged }) {
                 data={STATUS_FILTERS}
               />
             )}
+            {availableLabels.length > 0 && (
+              <LabelFilter
+                available={availableLabels}
+                value={labelFilter}
+                onChange={setLabelFilter}
+              />
+            )}
           </Group>
           {view === 'list' && (
             <Select
@@ -493,7 +530,7 @@ export default function TaskList({ project, onTasksChanged }) {
       )}
 
       {!loading && view === 'board' && (
-        <TaskBoard tasks={tasks} onChangeStatus={changeStatus} onEditTask={setEditingTask} />
+        <TaskBoard tasks={boardTasks} onChangeStatus={changeStatus} onEditTask={setEditingTask} />
       )}
 
       {!loading && view === 'list' && (
@@ -715,7 +752,55 @@ export default function TaskList({ project, onTasksChanged }) {
           </Stack>
         </form>
       </Modal>
+
+      <LabelManagerModal
+        opened={manageLabelsOpen}
+        onClose={() => setManageLabelsOpen(false)}
+        onChanged={refreshAll}
+      />
     </Stack>
+  );
+}
+
+// Filter tasks by label (any-of). Options are the labels used in this project.
+function LabelFilter({ available, value, onChange }) {
+  const toggle = (id) =>
+    onChange(value.includes(id) ? value.filter((x) => x !== id) : [...value, id]);
+  return (
+    <Popover position="bottom-start" shadow="md" width={220} withinPortal>
+      <Popover.Target>
+        <Button
+          size="xs"
+          variant={value.length ? 'light' : 'default'}
+          leftSection={<Tag size={14} />}
+        >
+          {value.length ? `${value.length} label${value.length > 1 ? 's' : ''}` : 'Labels'}
+        </Button>
+      </Popover.Target>
+      <Popover.Dropdown p="xs">
+        <Stack gap={6}>
+          {available.map((l) => (
+            <Checkbox
+              key={l.id}
+              size="xs"
+              checked={value.includes(l.id)}
+              onChange={() => toggle(l.id)}
+              label={
+                <Group gap={6} wrap="nowrap">
+                  <ColorSwatch color={labelSwatch(l.color)} size={10} withShadow={false} />
+                  <Text size="sm">{l.name}</Text>
+                </Group>
+              }
+            />
+          ))}
+          {value.length > 0 && (
+            <Button size="xs" variant="subtle" color="gray" onClick={() => onChange([])}>
+              Clear
+            </Button>
+          )}
+        </Stack>
+      </Popover.Dropdown>
+    </Popover>
   );
 }
 

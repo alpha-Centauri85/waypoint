@@ -73,8 +73,10 @@ shown as a colored flag and sortable. A **per-user label library** (`labels` +
 `task_labels`, colored) is managed at `/api/labels`; labels are assigned/created
 from the task edit modal (`LabelPicker`), embedded in task responses, and shown
 as colored chips on rows. Labels are first-class entities (stable ids) — the
-foundation for future templates/modules. Open follow-ups: filter-by-label and a
-label management UI.
+foundation for future templates/modules. Tasks can be **filtered by label** (a
+Labels popover in both list and board views) and the whole label library can be
+**managed** (`LabelManagerModal`: rename / recolor / delete, from the project
+actions menu).
 
 **Sections (task grouping):** projects can have **sections** (`sections` +
 nullable `tasks.section_id`; deleting a section ungroups its tasks). The task
