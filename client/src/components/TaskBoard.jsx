@@ -3,64 +3,56 @@ import { Badge, Group, Paper, Stack, Text, Tooltip } from '@mantine/core';
 import { CalendarClock, FileText, Flag } from 'lucide-react';
 import dayjs from 'dayjs';
 import { PRIORITY_META } from '../priority.js';
+import { useStatuses } from '../statuses.jsx';
 import { isOverdue } from './TaskCard.jsx';
 
-// Kanban columns are the task statuses; dragging a card to a column sets that
-// status. Cards are compact and open the edit modal on click.
-const COLUMNS = [
-  { status: 'todo', label: 'To do', color: 'gray' },
-  { status: 'doing', label: 'In progress', color: 'amber' },
-  { status: 'done', label: 'Done', color: 'teal' },
-];
-
+// Kanban columns are the user's workflow statuses; dragging a card to a column
+// sets that status. Cards are compact and open the edit modal on click.
 export default function TaskBoard({ tasks, onChangeStatus, onEditTask }) {
+  const { statuses } = useStatuses();
   const [draggedId, setDraggedId] = useState(null);
-  const [overStatus, setOverStatus] = useState(null);
+  const [overId, setOverId] = useState(null);
 
-  function drop(status) {
+  function drop(statusId) {
     const dragged = tasks.find((t) => t.id === draggedId);
     setDraggedId(null);
-    setOverStatus(null);
-    if (dragged && dragged.status !== status) onChangeStatus(dragged, status);
+    setOverId(null);
+    if (dragged && dragged.status_id !== statusId) onChangeStatus(dragged, statusId);
   }
 
   return (
     <Group align="flex-start" gap="md" wrap="nowrap" style={{ overflowX: 'auto' }}>
-      {COLUMNS.map((col) => {
-        const items = tasks.filter((t) => t.status === col.status);
+      {statuses.map((col) => {
+        const items = tasks.filter((t) => t.status_id === col.id);
         return (
           <Stack
-            key={col.status}
+            key={col.id}
             gap="sm"
-            aria-label={`${col.label} column`}
+            aria-label={`${col.name} column`}
             onDragOver={(e) => {
               if (draggedId === null) return;
               e.preventDefault();
-              if (overStatus !== col.status) setOverStatus(col.status);
+              if (overId !== col.id) setOverId(col.id);
             }}
             onDrop={(e) => {
               e.preventDefault();
-              drop(col.status);
+              drop(col.id);
             }}
             style={{
               flex: '1 1 0',
-              minWidth: 250,
+              minWidth: 240,
               background: 'var(--mantine-color-dark-7)',
               borderRadius: 12,
               padding: 10,
               outline:
-                overStatus === col.status
+                overId === col.id
                   ? '2px dashed var(--mantine-color-teal-7)'
                   : '1px solid var(--mantine-color-dark-4)',
             }}
           >
             <Group justify="space-between" px={4} pb={2}>
-              <Badge
-                color={col.color}
-                variant={col.status === 'todo' ? 'light' : 'filled'}
-                radius="sm"
-              >
-                {col.label}
+              <Badge color={col.color} variant={col.is_done ? 'filled' : 'light'} radius="sm">
+                {col.name}
               </Badge>
               <Text size="sm" c="dark.2" fw={600}>
                 {items.length}
@@ -71,11 +63,12 @@ export default function TaskBoard({ tasks, onChangeStatus, onEditTask }) {
               <BoardCard
                 key={task.id}
                 task={task}
+                isDone={col.is_done}
                 dragging={draggedId === task.id}
                 onDragStart={() => setDraggedId(task.id)}
                 onDragEnd={() => {
                   setDraggedId(null);
-                  setOverStatus(null);
+                  setOverId(null);
                 }}
                 onClick={() => onEditTask(task)}
               />
@@ -93,7 +86,7 @@ export default function TaskBoard({ tasks, onChangeStatus, onEditTask }) {
   );
 }
 
-function BoardCard({ task, dragging, onDragStart, onDragEnd, onClick }) {
+function BoardCard({ task, isDone, dragging, onDragStart, onDragEnd, onClick }) {
   const hasMeta =
     task.priority > 0 || task.due_date || (task.labels ?? []).length > 0 || task.notes;
   return (
@@ -127,7 +120,7 @@ function BoardCard({ task, dragging, onDragStart, onDragEnd, onClick }) {
             <Badge
               size="xs"
               variant="light"
-              color={isOverdue(task) ? 'red' : 'gray'}
+              color={isOverdue(task, isDone) ? 'red' : 'gray'}
               leftSection={<CalendarClock size={10} />}
             >
               {dayjs(task.due_date).format('MMM D')}

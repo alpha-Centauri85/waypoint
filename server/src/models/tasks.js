@@ -4,7 +4,7 @@ import { getLabelsForTask, labelsByTaskIds } from './labels.js';
 // New tasks append to the end of their section (position = max + 1 within the
 // same project + section); `section_id IS ?` treats NULL as the "ungrouped" group.
 const insert = db.prepare(
-  `INSERT INTO tasks (project_id, section_id, title, status, due_date, notes, priority, position)
+  `INSERT INTO tasks (project_id, section_id, title, status_id, due_date, notes, priority, position)
    VALUES (?, ?, ?, ?, ?, ?, ?,
      (SELECT COALESCE(MAX(position) + 1, 0) FROM tasks WHERE project_id = ? AND section_id IS ?))`,
 );
@@ -13,7 +13,7 @@ const listByProject = db.prepare(
 );
 const byId = db.prepare('SELECT * FROM tasks WHERE id = ? AND project_id = ?');
 const update = db.prepare(
-  `UPDATE tasks SET title = ?, status = ?, due_date = ?, notes = ?, priority = ?, section_id = ?, position = ?
+  `UPDATE tasks SET title = ?, status_id = ?, due_date = ?, notes = ?, priority = ?, section_id = ?, position = ?
    WHERE id = ? AND project_id = ?`,
 );
 const del = db.prepare('DELETE FROM tasks WHERE id = ? AND project_id = ?');
@@ -39,13 +39,13 @@ const ownedByUser = db.prepare(`
 
 export function createTask(
   projectId,
-  { title, status = 'todo', dueDate = null, notes = null, priority = 0, sectionId = null },
+  { title, statusId, dueDate = null, notes = null, priority = 0, sectionId = null },
 ) {
   const { lastInsertRowid } = insert.run(
     projectId,
     sectionId,
     title,
-    status,
+    statusId,
     dueDate,
     notes,
     priority,
@@ -106,14 +106,14 @@ export function updateTask(id, projectId, fields) {
     section_id === current.section_id ? current.position : maxPosition.get(projectId, section_id).p;
   const merged = {
     title: 'title' in fields ? fields.title : current.title,
-    status: 'status' in fields ? fields.status : current.status,
+    status_id: 'statusId' in fields ? fields.statusId : current.status_id,
     due_date: 'dueDate' in fields ? fields.dueDate : current.due_date,
     notes: 'notes' in fields ? fields.notes : current.notes,
     priority: 'priority' in fields ? fields.priority : current.priority,
   };
   update.run(
     merged.title,
-    merged.status,
+    merged.status_id,
     merged.due_date,
     merged.notes,
     merged.priority,

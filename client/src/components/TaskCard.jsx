@@ -2,20 +2,20 @@ import { ActionIcon, Badge, Group, Paper, Text, Tooltip } from '@mantine/core';
 import { CalendarClock, FileText, Flag, GripVertical, Pencil, Trash2 } from 'lucide-react';
 import dayjs from 'dayjs';
 import { PRIORITY_META } from '../priority.js';
+import { useStatuses } from '../statuses.jsx';
 import Subtasks from './Subtasks.jsx';
 
-const STATUS_COLOR = { todo: 'gray', doing: 'amber', done: 'teal' };
-const STATUS_LABEL = { todo: 'To do', doing: 'In progress', done: 'Done' };
-
-// A task is overdue when its due date is in the past and it isn't done yet.
-export function isOverdue(task) {
-  return task.due_date && task.status !== 'done' && dayjs(task.due_date).isBefore(dayjs(), 'day');
+// A task is overdue when its due date is in the past and its status isn't terminal.
+export function isOverdue(task, isDone) {
+  return task.due_date && !isDone && dayjs(task.due_date).isBefore(dayjs(), 'day');
 }
 
 // One task row: status pill (click to cycle), title, priority/notes/due/label
 // meta, edit + delete, and its subtasks. Drag behaviour is driven by the parent
 // via `drag` (handlers + dragging/dragOver flags) so reordering can be scoped.
 export default function TaskCard({ task, reorderEnabled, drag, onCycle, onEdit, onDelete }) {
+  const { statusById } = useStatuses();
+  const status = statusById(task.status_id);
   return (
     <Paper
       withBorder
@@ -42,15 +42,15 @@ export default function TaskCard({ task, reorderEnabled, drag, onCycle, onEdit, 
               />
             </Tooltip>
           )}
-          <Tooltip label="Click to change status" openDelay={400}>
+          <Tooltip label="Click to advance status" openDelay={400}>
             <Badge
-              color={STATUS_COLOR[task.status]}
-              variant={task.status === 'todo' ? 'light' : 'filled'}
-              w={92}
+              color={status.color}
+              variant={status.is_done ? 'filled' : 'light'}
+              w={100}
               style={{ cursor: 'pointer', flexShrink: 0 }}
               onClick={onCycle}
             >
-              {STATUS_LABEL[task.status]}
+              {status.name}
             </Badge>
           </Tooltip>
           <Text truncate>{task.title}</Text>
@@ -74,7 +74,7 @@ export default function TaskCard({ task, reorderEnabled, drag, onCycle, onEdit, 
           {task.due_date && (
             <Badge
               variant="light"
-              color={isOverdue(task) ? 'red' : 'gray'}
+              color={isOverdue(task, status.is_done) ? 'red' : 'gray'}
               leftSection={<CalendarClock size={12} />}
               style={{ flexShrink: 0 }}
             >

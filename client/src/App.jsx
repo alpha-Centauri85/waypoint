@@ -1,16 +1,29 @@
 import { useEffect, useState } from 'react';
-import { Box, Button, Center, Container, Loader, MantineProvider, Menu, Text } from '@mantine/core';
+import {
+  Box,
+  Button,
+  Center,
+  Container,
+  Loader,
+  MantineProvider,
+  Menu,
+  Text,
+  UnstyledButton,
+} from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
-import { ChevronDown, LogOut } from 'lucide-react';
+import { ChevronDown, LogOut, Settings as SettingsIcon } from 'lucide-react';
 import { theme } from './theme.js';
 import { getMe, logout } from './api.js';
+import { StatusesProvider } from './statuses.jsx';
 import Logo from './components/Logo.jsx';
 import AuthForm from './components/AuthForm.jsx';
 import Dashboard from './components/Dashboard.jsx';
+import SettingsScreen from './components/SettingsScreen.jsx';
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState('dashboard'); // 'dashboard' | 'settings'
 
   useEffect(() => {
     getMe()
@@ -22,6 +35,7 @@ export default function App() {
   async function handleLogout() {
     await logout();
     setUser(null);
+    setView('dashboard');
   }
 
   return (
@@ -32,9 +46,16 @@ export default function App() {
           <Loader color="teal" />
         </Center>
       ) : user ? (
-        <AppFrame user={user} onLogout={handleLogout}>
-          <Dashboard />
-        </AppFrame>
+        <StatusesProvider>
+          <AppFrame
+            user={user}
+            onLogout={handleLogout}
+            onHome={() => setView('dashboard')}
+            onSettings={() => setView('settings')}
+          >
+            {view === 'settings' ? <SettingsScreen /> : <Dashboard />}
+          </AppFrame>
+        </StatusesProvider>
       ) : (
         <AuthForm onAuthed={setUser} />
       )}
@@ -43,7 +64,7 @@ export default function App() {
 }
 
 // The signed-in shell: a sticky brand header over the working area.
-function AppFrame({ user, onLogout, children }) {
+function AppFrame({ user, onLogout, onHome, onSettings, children }) {
   return (
     <Box mih="100vh" bg="dark.7">
       <Box
@@ -62,7 +83,9 @@ function AppFrame({ user, onLogout, children }) {
           borderBottom: '1px solid var(--mantine-color-dark-4)',
         }}
       >
-        <Logo size={26} />
+        <UnstyledButton onClick={onHome} aria-label="Waypoint home">
+          <Logo size={26} />
+        </UnstyledButton>
         <Menu shadow="md" width={200} position="bottom-end">
           <Menu.Target>
             <Button
@@ -77,6 +100,9 @@ function AppFrame({ user, onLogout, children }) {
             </Button>
           </Menu.Target>
           <Menu.Dropdown>
+            <Menu.Item leftSection={<SettingsIcon size={15} />} onClick={onSettings}>
+              Settings
+            </Menu.Item>
             <Menu.Item leftSection={<LogOut size={15} />} onClick={onLogout}>
               Log out
             </Menu.Item>

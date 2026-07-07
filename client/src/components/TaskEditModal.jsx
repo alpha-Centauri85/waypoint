@@ -5,19 +5,16 @@ import { notifications } from '@mantine/notifications';
 import dayjs from 'dayjs';
 import { updateTask } from '../api.js';
 import { PRIORITY_OPTIONS } from '../priority.js';
+import { useStatuses } from '../statuses.jsx';
 import LabelPicker from './LabelPicker.jsx';
 
-const STATUS_OPTIONS = [
-  { value: 'todo', label: 'To do' },
-  { value: 'doing', label: 'Doing' },
-  { value: 'done', label: 'Done' },
-];
-
-// Modal for editing a task's title, status, due date, and notes. `task` is the
-// row being edited (or null when closed); on save it PATCHes and calls onSaved.
+// Modal for editing a task's fields. `task` is the row being edited (or null when
+// closed); on save it PATCHes and calls onSaved.
 export default function TaskEditModal({ project, task, sections = [], opened, onClose, onSaved }) {
+  const { statuses } = useStatuses();
+  const statusOptions = statuses.map((s) => ({ value: String(s.id), label: s.name }));
   const [title, setTitle] = useState('');
-  const [status, setStatus] = useState('todo');
+  const [statusId, setStatusId] = useState(null);
   const [priority, setPriority] = useState(0);
   const [sectionId, setSectionId] = useState(null);
   const [dueDate, setDueDate] = useState(null); // Date | null
@@ -30,7 +27,7 @@ export default function TaskEditModal({ project, task, sections = [], opened, on
   useEffect(() => {
     if (!task) return;
     setTitle(task.title);
-    setStatus(task.status);
+    setStatusId(task.status_id ?? null);
     setPriority(task.priority ?? 0);
     setSectionId(task.section_id ?? null);
     setDueDate(task.due_date ? dayjs(task.due_date).toDate() : null);
@@ -50,7 +47,7 @@ export default function TaskEditModal({ project, task, sections = [], opened, on
     try {
       await updateTask(project.id, task.id, {
         title: trimmed,
-        status,
+        statusId,
         priority,
         sectionId,
         labelIds,
@@ -82,9 +79,9 @@ export default function TaskEditModal({ project, task, sections = [], opened, on
           <Group grow align="flex-start">
             <Select
               label="Status"
-              data={STATUS_OPTIONS}
-              value={status}
-              onChange={(v) => setStatus(v ?? 'todo')}
+              data={statusOptions}
+              value={statusId != null ? String(statusId) : null}
+              onChange={(v) => setStatusId(v ? Number(v) : null)}
               allowDeselect={false}
             />
             <Select

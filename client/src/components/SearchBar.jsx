@@ -4,13 +4,14 @@ import { useDebouncedValue } from '@mantine/hooks';
 import { Search } from 'lucide-react';
 import { search } from '../api.js';
 import { PRIORITY_META } from '../priority.js';
+import { useStatuses } from '../statuses.jsx';
 
-const STATUS_COLOR = { todo: 'gray', doing: 'amber', done: 'teal' };
 const empty = { projects: [], tasks: [] };
 
 // Global search over the user's projects and tasks. Selecting a result opens the
 // owning project. Debounced; queries once the term is 2+ characters.
 export default function SearchBar({ onSelectProject }) {
+  const { statusById } = useStatuses();
   const [query, setQuery] = useState('');
   const [debounced] = useDebouncedValue(query, 220);
   const [results, setResults] = useState(empty);
@@ -77,10 +78,10 @@ export default function SearchBar({ onSelectProject }) {
                 <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
                   <Badge
                     size="xs"
-                    color={STATUS_COLOR[t.status]}
-                    variant={t.status === 'todo' ? 'light' : 'filled'}
+                    color={statusById(t.status_id).color}
+                    variant={statusById(t.status_id).is_done ? 'filled' : 'light'}
                   >
-                    {t.status}
+                    {statusById(t.status_id).name}
                   </Badge>
                   <Text size="sm" truncate>
                     {t.title}

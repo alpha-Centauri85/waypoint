@@ -65,8 +65,14 @@ many-to-many to a per-user label library (`labels` + `task_labels`); the same
 pool tags projects via `project_labels`. Task/project API responses embed a
 `labels` array; `labelIds` on create/update replaces the labels (ids the user
 doesn't own are ignored). A task's `sectionId` is validated to the same project.
-Additive column changes use the idempotent `ensureColumn` helper in
-`db/index.js` (a fuller versioned-migration system is still on the roadmap).
+Task status is a **per-user custom workflow**: a `statuses` table (name, color,
+position, `is_done`, `key`) with `tasks.status_id` FK — not a fixed enum. Defaults
+(To do/In progress/Done) are seeded lazily by `models/statuses.js` (`ensureStatuses`,
+called from `/auth/me`, login, register) and legacy `tasks.status` text is
+backfilled by key; the client reads status display from a `StatusesProvider`
+context by `status_id`. `is_done` drives progress + overdue. Additive column
+changes use the idempotent `ensureColumn` helper in `db/index.js` (a fuller
+versioned-migration system is still on the roadmap).
 **Templates** are reusable blueprints: `templates` → `template_modules` →
 `modules` → `module_tasks` (all user-scoped). "Save as template" derives
 modules from a project's sections; "instantiate" builds a new project with a

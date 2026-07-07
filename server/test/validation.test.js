@@ -62,11 +62,11 @@ test('unknown body keys are stripped, not persisted', async () => {
   expect(res.body).not.toHaveProperty('role');
 });
 
-test('an invalid task status is a 400 (caught before the DB)', async () => {
+test('a statusId that is not one of your statuses is a 400', async () => {
   const { agent, projectId } = await agentWithProject();
   const res = await agent
     .post(`/api/projects/${projectId}/tasks`)
-    .send({ title: 'X', status: 'bogus' });
+    .send({ title: 'X', statusId: 999999 });
   expect(res.status).toBe(400);
   expect(res.body.error).toMatch(/status/i);
 });
@@ -99,9 +99,11 @@ test('an explicit null clears a task due date and notes (presence-based merge)',
   expect(task.body.due_date).toBe('2026-08-01');
 
   // A status-only patch must leave the due date and notes untouched.
+  const doing = (await agent.get('/api/statuses')).body.find((s) => s.key === 'doing');
   const bumped = await agent
     .patch(`/api/projects/${projectId}/tasks/${task.body.id}`)
-    .send({ status: 'doing' });
+    .send({ statusId: doing.id });
+  expect(bumped.body.status_id).toBe(doing.id);
   expect(bumped.body.due_date).toBe('2026-08-01');
   expect(bumped.body.notes).toBe('stuff');
 

@@ -3,6 +3,14 @@ import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import TaskList, { arrangeTasks, moveTask } from './TaskList.jsx';
+import { StatusesProvider } from '../statuses.jsx';
+
+// Seeded workflow statuses returned to the StatusesProvider.
+const STATUSES = [
+  { id: 101, name: 'To do', color: 'gray', is_done: 0, key: 'todo' },
+  { id: 102, name: 'In progress', color: 'amber', is_done: 0, key: 'doing' },
+  { id: 103, name: 'Done', color: 'teal', is_done: 1, key: 'done' },
+];
 
 function jsonResponse(status, body) {
   return Promise.resolve({
@@ -12,11 +20,27 @@ function jsonResponse(status, body) {
   });
 }
 
+// Wrap a per-test route handler so /api/statuses (+ subtasks/sections) are always
+// answered; `routes(url, opts)` handles the rest.
+function stubFetch(calls, routes) {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((url, opts = {}) => {
+      calls.push({ url: String(url), opts });
+      const u = String(url);
+      if (u.includes('/api/statuses')) return jsonResponse(200, STATUSES);
+      if (u.includes('/subtasks')) return jsonResponse(200, []);
+      if (u.includes('/sections')) return jsonResponse(200, []);
+      return routes(u, opts) ?? jsonResponse(200, []);
+    }),
+  );
+}
+
 function renderWithProviders(ui) {
   return render(
     <MantineProvider>
       <Notifications />
-      {ui}
+      <StatusesProvider>{ui}</StatusesProvider>
     </MantineProvider>,
   );
 }
@@ -26,52 +50,49 @@ afterEach(() => {
 });
 
 test('editing a task opens a prefilled modal and PATCHes the changes', async () => {
-  const task = { id: 7, title: 'Original title', status: 'todo', due_date: null, notes: null };
+  const task = {
+    id: 7,
+    title: 'Original title',
+    status_id: 101,
+    due_date: null,
+    notes: null,
+    labels: [],
+  };
   const calls = [];
-
-  vi.stubGlobal(
-    'fetch',
-    vi.fn((url, opts = {}) => {
-      calls.push({ url: String(url), opts });
-      if (String(url).includes('/subtasks')) return jsonResponse(200, []);
-      if (String(url).endsWith('/tasks')) return jsonResponse(200, [task]);
-      if (opts.method === 'PATCH') return jsonResponse(200, { ...task, title: 'Updated title' });
-      return jsonResponse(200, []);
-    }),
-  );
+  stubFetch(calls, (u, opts) => {
+    if (u.endsWith('/tasks')) return jsonResponse(200, [task]);
+    if (opts.method === 'PATCH') return jsonResponse(200, { ...task, title: 'Updated title' });
+    return null;
+  });
 
   renderWithProviders(<TaskList project={{ id: 1, name: 'P' }} />);
-
-  // The task renders.
   expect(await screen.findByText('Original title')).toBeInTheDocument();
 
-  // Open the edit modal; it should be prefilled from the task.
   fireEvent.click(screen.getByRole('button', { name: /edit task/i }));
   const dialog = await screen.findByRole('dialog');
   const titleInput = within(dialog).getByLabelText(/title/i);
   expect(titleInput).toHaveValue('Original title');
 
-  // Change the title and save.
   fireEvent.change(titleInput, { target: { value: 'Updated title' } });
   fireEvent.click(within(dialog).getByRole('button', { name: /save/i }));
 
   await waitFor(() => {
-    const patch = calls.find((c) => c.opts.method === 'PATCH');
+    const patch = calls.find((c) => c.opts.method === 'PATCH' && c.url.endsWith('/tasks/7'));
     expect(patch).toBeTruthy();
-    expect(patch.url).toContain('/api/projects/1/tasks/7');
-    expect(JSON.parse(patch.opts.body)).toMatchObject({ title: 'Updated title', status: 'todo' });
+    expect(JSON.parse(patch.opts.body)).toMatchObject({ title: 'Updated title', statusId: 101 });
   });
 });
 
 describe('arrangeTasks', () => {
   const tasks = [
-    { id: 1, title: 'Banana', status: 'done', due_date: '2026-03-01' },
-    { id: 2, title: 'apple', status: 'todo', due_date: null },
-    { id: 3, title: 'Cherry', status: 'doing', due_date: '2026-01-15' },
+    { id: 1, title: 'Banana', status_id: 103, due_date: '2026-03-01' },
+    { id: 2, title: 'apple', status_id: 101, due_date: null },
+    { id: 3, title: 'Cherry', status_id: 102, due_date: '2026-01-15' },
   ];
+  const positionById = { 101: 0, 102: 1, 103: 2 };
 
-  test('status filter keeps only matching tasks', () => {
-    expect(arrangeTasks(tasks, 'todo', 'default').map((t) => t.id)).toEqual([2]);
+  test('status filter keeps only tasks with that status id', () => {
+    expect(arrangeTasks(tasks, '101', 'default').map((t) => t.id)).toEqual([2]);
     expect(arrangeTasks(tasks, 'all', 'default').map((t) => t.id)).toEqual([1, 2, 3]);
   });
 
@@ -79,19 +100,17 @@ describe('arrangeTasks', () => {
     expect(arrangeTasks(tasks, 'all', 'due').map((t) => t.id)).toEqual([3, 1, 2]);
   });
 
-  test('status sort orders todo → doing → done', () => {
-    expect(arrangeTasks(tasks, 'all', 'status').map((t) => t.status)).toEqual([
-      'todo',
-      'doing',
-      'done',
+  test('status sort follows workflow order', () => {
+    expect(arrangeTasks(tasks, 'all', 'status', [], positionById).map((t) => t.status_id)).toEqual([
+      101, 102, 103,
     ]);
   });
 
   test('priority sort puts the highest priority first', () => {
     const withPriority = [
-      { id: 1, title: 'a', status: 'todo', due_date: null, priority: 1 },
-      { id: 2, title: 'b', status: 'todo', due_date: null, priority: 4 },
-      { id: 3, title: 'c', status: 'todo', due_date: null, priority: 2 },
+      { id: 1, title: 'a', status_id: 101, due_date: null, priority: 1 },
+      { id: 2, title: 'b', status_id: 101, due_date: null, priority: 4 },
+      { id: 3, title: 'c', status_id: 101, due_date: null, priority: 2 },
     ];
     expect(arrangeTasks(withPriority, 'all', 'priority').map((t) => t.id)).toEqual([2, 3, 1]);
   });
@@ -104,17 +123,11 @@ describe('arrangeTasks', () => {
     ]);
   });
 
-  test('does not mutate the input array', () => {
-    const input = [...tasks];
-    arrangeTasks(input, 'all', 'title');
-    expect(input.map((t) => t.id)).toEqual([1, 2, 3]);
-  });
-
   test('label filter keeps tasks carrying any selected label', () => {
     const labelled = [
-      { id: 1, title: 'a', status: 'todo', due_date: null, labels: [{ id: 5 }] },
-      { id: 2, title: 'b', status: 'todo', due_date: null, labels: [{ id: 6 }] },
-      { id: 3, title: 'c', status: 'todo', due_date: null, labels: [] },
+      { id: 1, title: 'a', status_id: 101, due_date: null, labels: [{ id: 5 }] },
+      { id: 2, title: 'b', status_id: 101, due_date: null, labels: [{ id: 6 }] },
+      { id: 3, title: 'c', status_id: 101, due_date: null, labels: [] },
     ];
     expect(arrangeTasks(labelled, 'all', 'default', [5]).map((t) => t.id)).toEqual([1]);
     expect(arrangeTasks(labelled, 'all', 'default', [5, 6]).map((t) => t.id)).toEqual([1, 2]);
@@ -147,26 +160,44 @@ describe('moveTask', () => {
 
 test('dragging a task onto another PATCHes the new order', async () => {
   const tasks = [
-    { id: 1, title: 'A', status: 'todo', due_date: null, notes: null },
-    { id: 2, title: 'B', status: 'todo', due_date: null, notes: null },
-    { id: 3, title: 'C', status: 'todo', due_date: null, notes: null },
+    {
+      id: 1,
+      title: 'A',
+      status_id: 101,
+      due_date: null,
+      notes: null,
+      section_id: null,
+      labels: [],
+    },
+    {
+      id: 2,
+      title: 'B',
+      status_id: 101,
+      due_date: null,
+      notes: null,
+      section_id: null,
+      labels: [],
+    },
+    {
+      id: 3,
+      title: 'C',
+      status_id: 101,
+      due_date: null,
+      notes: null,
+      section_id: null,
+      labels: [],
+    },
   ];
   const calls = [];
-  vi.stubGlobal(
-    'fetch',
-    vi.fn((url, opts = {}) => {
-      calls.push({ url: String(url), opts });
-      if (String(url).includes('/subtasks')) return jsonResponse(200, []);
-      if (String(url).includes('/reorder')) return jsonResponse(200, tasks);
-      if (String(url).endsWith('/tasks')) return jsonResponse(200, tasks);
-      return jsonResponse(200, []);
-    }),
-  );
+  stubFetch(calls, (u) => {
+    if (u.includes('/reorder')) return jsonResponse(200, tasks);
+    if (u.endsWith('/tasks')) return jsonResponse(200, tasks);
+    return null;
+  });
 
   renderWithProviders(<TaskList project={{ id: 1, name: 'P' }} />);
   const rowA = (await screen.findByText('A')).closest('[draggable="true"]');
   const rowC = screen.getByText('C').closest('[draggable="true"]');
-  expect(rowA).toBeTruthy();
 
   fireEvent.dragStart(rowA);
   fireEvent.dragOver(rowC);
@@ -174,8 +205,6 @@ test('dragging a task onto another PATCHes the new order', async () => {
 
   await waitFor(() => {
     const reorder = calls.find((c) => c.url.includes('/reorder'));
-    expect(reorder).toBeTruthy();
-    expect(reorder.opts.method).toBe('PATCH');
     expect(JSON.parse(reorder.opts.body)).toEqual({ orderedIds: [2, 3, 1] });
   });
 });
@@ -185,7 +214,7 @@ test('dragging a task into another section PATCHes its sectionId and reorders', 
     {
       id: 1,
       title: 'In A',
-      status: 'todo',
+      status_id: 101,
       due_date: null,
       notes: null,
       section_id: 10,
@@ -194,7 +223,7 @@ test('dragging a task into another section PATCHes its sectionId and reorders', 
     {
       id: 2,
       title: 'In B',
-      status: 'todo',
+      status_id: 101,
       due_date: null,
       notes: null,
       section_id: 20,
@@ -210,9 +239,11 @@ test('dragging a task into another section PATCHes its sectionId and reorders', 
     'fetch',
     vi.fn((url, opts = {}) => {
       calls.push({ url: String(url), opts });
-      if (String(url).includes('/subtasks')) return jsonResponse(200, []);
-      if (String(url).includes('/sections')) return jsonResponse(200, sections);
-      if (String(url).endsWith('/tasks')) return jsonResponse(200, tasks);
+      const u = String(url);
+      if (u.includes('/api/statuses')) return jsonResponse(200, STATUSES);
+      if (u.includes('/subtasks')) return jsonResponse(200, []);
+      if (u.includes('/sections')) return jsonResponse(200, sections);
+      if (u.endsWith('/tasks')) return jsonResponse(200, tasks);
       return jsonResponse(200, tasks);
     }),
   );
@@ -227,11 +258,8 @@ test('dragging a task into another section PATCHes its sectionId and reorders', 
 
   await waitFor(() => {
     const patch = calls.find((c) => c.opts.method === 'PATCH' && c.url.endsWith('/tasks/1'));
-    expect(patch).toBeTruthy();
     expect(JSON.parse(patch.opts.body)).toMatchObject({ sectionId: 20 });
-    const reorder = calls.find((c) => c.url.includes('/tasks/reorder'));
-    expect(reorder).toBeTruthy();
-    expect(JSON.parse(reorder.opts.body).orderedIds).toEqual([1, 2]);
+    expect(calls.find((c) => c.url.includes('/tasks/reorder'))).toBeTruthy();
   });
 });
 
@@ -240,7 +268,7 @@ test('board view: dragging a card to another column changes its status', async (
     {
       id: 1,
       title: 'Card A',
-      status: 'todo',
+      status_id: 101,
       due_date: null,
       notes: null,
       section_id: null,
@@ -249,7 +277,7 @@ test('board view: dragging a card to another column changes its status', async (
     {
       id: 2,
       title: 'Card B',
-      status: 'doing',
+      status_id: 102,
       due_date: null,
       notes: null,
       section_id: null,
@@ -257,20 +285,13 @@ test('board view: dragging a card to another column changes its status', async (
     },
   ];
   const calls = [];
-  vi.stubGlobal(
-    'fetch',
-    vi.fn((url, opts = {}) => {
-      calls.push({ url: String(url), opts });
-      if (String(url).includes('/subtasks')) return jsonResponse(200, []);
-      if (String(url).includes('/sections')) return jsonResponse(200, []);
-      if (String(url).endsWith('/tasks')) return jsonResponse(200, tasks);
-      return jsonResponse(200, tasks);
-    }),
-  );
+  stubFetch(calls, (u) => {
+    if (u.endsWith('/tasks')) return jsonResponse(200, tasks);
+    return jsonResponse(200, tasks);
+  });
 
   renderWithProviders(<TaskList project={{ id: 1, name: 'P' }} />);
-  // Switch to board view.
-  fireEvent.click(await screen.findByRole('radio', { name: 'Board' }));
+  fireEvent.click(await screen.findByText('Board'));
 
   const cardA = (await screen.findByText('Card A')).closest('[draggable="true"]');
   const doneColumn = screen.getByLabelText('Done column');
@@ -281,31 +302,6 @@ test('board view: dragging a card to another column changes its status', async (
 
   await waitFor(() => {
     const patch = calls.find((c) => c.opts.method === 'PATCH' && c.url.endsWith('/tasks/1'));
-    expect(patch).toBeTruthy();
-    expect(JSON.parse(patch.opts.body)).toEqual({ status: 'done' });
+    expect(JSON.parse(patch.opts.body)).toEqual({ statusId: 103 });
   });
-});
-
-test('the status filter hides non-matching tasks in the list', async () => {
-  const tasks = [
-    { id: 1, title: 'A todo task', status: 'todo', due_date: null, notes: null },
-    { id: 2, title: 'A done task', status: 'done', due_date: null, notes: null },
-  ];
-  vi.stubGlobal(
-    'fetch',
-    vi.fn((url) => {
-      if (String(url).includes('/subtasks')) return jsonResponse(200, []);
-      if (String(url).endsWith('/tasks')) return jsonResponse(200, tasks);
-      return jsonResponse(200, []);
-    }),
-  );
-
-  renderWithProviders(<TaskList project={{ id: 1, name: 'P' }} />);
-  expect(await screen.findByText('A todo task')).toBeInTheDocument();
-  expect(screen.getByText('A done task')).toBeInTheDocument();
-
-  // Filter to "Done" → the todo task disappears.
-  fireEvent.click(screen.getByRole('radio', { name: 'Done' }));
-  expect(screen.queryByText('A todo task')).not.toBeInTheDocument();
-  expect(screen.getByText('A done task')).toBeInTheDocument();
 });

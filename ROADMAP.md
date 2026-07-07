@@ -127,14 +127,11 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
 - [ ] **18. Comments / activity log**
 - [ ] **19. Project sharing (multi-user collaboration)**
 - [ ] **20. Due-date notifications / reminders**
-- [ ] **22. Settings / configuration screen** (M) — a dedicated Settings area
-      (its own screen/route, reached from the header user menu) that centralizes
-      configuration instead of burying it in per-project modals. First home:
-      **global label management** — list/add/rename/recolor/delete labels in one
-      place (promotes today's `LabelManagerModal`, which is reachable only from a
-      project's ⋮ menu and has no top-level "add label"). Later tenants: custom
-      statuses (23), account/password, and app preferences. Keep the existing
-      inline label-create in the pickers.
+- [x] **22. Settings / configuration screen** (M) — a dedicated Settings screen
+      (`SettingsScreen`, reached from the header user menu; the logo returns home).
+      Houses **workflow statuses** (23) and **global label management**
+      (list/add/rename/recolor/delete in one place). App view is a simple
+      `view` state in `App.jsx` (no router needed yet).
 - [ ] **24. Module library + Templates workspace** (L) — promote modules from
       template-private copies to a **reusable library** with its own section
       (its own screen, sibling to Settings). Manage modules independently:
@@ -158,19 +155,18 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
       sections/tasks/subtasks + section-label slots; modules gain subtasks +
       labels. Depends on the module library (24). Editor grows sections + subtasks + a per-section label picker. Full model + schema sketch + open decisions
       (auto-inject vs pick-at-instantiation) in `docs/labels-sections-templates.md`.
-- [ ] **23. Custom statuses (workflow states)** (L) — replace the hardcoded
-      `todo`/`doing`/`done` with user-defined states. Sketch: a `statuses` table
-      (name, color, `position`, and an `is_done`/terminal flag) and `tasks`
-      reference a `status_id` (FK) instead of the current TEXT+CHECK column.
-      Board columns, the status filter, status sort, and the click-to-cycle badge
-      all derive from the configured states; **progress % and overdue highlighting
-      key off the terminal flag** (they currently hardcode `status === 'done'`).
-      Managed from the Settings screen (22). Migration: seed the three defaults for
-      existing users and map existing `tasks.status` text → the new rows; templates'
-      `module_tasks.status` needs the same treatment. **Open questions:** scope —
-      per-user (one workflow, like labels) vs per-project (more flexible, more UI);
-      whether more than one state can be terminal. Decide before building (like the
-      label-scope call in `docs/labels-sections-templates.md`).
+- [x] **23. Custom statuses (workflow states)** (L) — per-user, user-defined
+      states replace the hardcoded todo/doing/done. `statuses` table (name, color,
+      `position`, `is_done`, plus `key` for the seeded defaults) + `tasks.status_id`
+      FK; defaults are seeded lazily (on `/me` / first status access) and legacy
+      `tasks.status` text is backfilled by key. A `StatusesProvider` (React context)
+      loads them once; board columns, the status filter, status sort, the
+      click-to-cycle badge, the edit-modal select, search, and **progress %/overdue
+      (via `is_done`)** all derive from it. Managed in Settings (22): add / rename /
+      recolor / mark-done / reorder / delete (delete reassigns tasks, refuses the
+      last). Templates keep the default keys (mapped on instantiate) until templates
+      v2. Migrates to per-account when sharing (19) lands. Covered by
+      `server/test/statuses.test.js`.
 - [x] **21. Templates & modules** — reusable project blueprints composed of
       modules (saved sections). Model: `templates` → `template_modules` →
       `modules` → `module_tasks`. Create from scratch or **save a project as a

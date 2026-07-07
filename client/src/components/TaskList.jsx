@@ -47,21 +47,13 @@ import {
   updateTask,
 } from '../api.js';
 import { notifyError } from '../notify.js';
+import { useStatuses } from '../statuses.jsx';
 import TaskCard from './TaskCard.jsx';
 import TaskBoard from './TaskBoard.jsx';
 import TaskEditModal from './TaskEditModal.jsx';
 import LabelManagerModal from './LabelManagerModal.jsx';
 
 const labelSwatch = (c) => `var(--mantine-color-${c}-6)`;
-
-const STATUSES = ['todo', 'doing', 'done'];
-
-const STATUS_FILTERS = [
-  { label: 'All', value: 'all' },
-  { label: 'To do', value: 'todo' },
-  { label: 'Doing', value: 'doing' },
-  { label: 'Done', value: 'done' },
-];
 
 const SORT_OPTIONS = [
   { value: 'default', label: 'Manual order' },
@@ -73,10 +65,15 @@ const SORT_OPTIONS = [
 
 // Apply the status filter, label filter, and sort. Due dates are ISO strings
 // (YYYY-MM-DD), which sort chronologically as plain strings; tasks without a due
-// date sort last. Sorting is non-mutating (works on a copy). `labelIds` keeps
-// tasks carrying any of the selected labels. Exported for tests.
-export function arrangeTasks(tasks, statusFilter, sortBy, labelIds = []) {
-  let filtered = statusFilter === 'all' ? tasks : tasks.filter((t) => t.status === statusFilter);
+// date sort last. Sorting is non-mutating (works on a copy). `statusFilter` is
+// 'all' or a status id; `labelIds` keeps tasks carrying any of the selected
+// labels; `positionById` maps status_id → workflow order for status sort.
+// Exported for tests.
+export function arrangeTasks(tasks, statusFilter, sortBy, labelIds = [], positionById = {}) {
+  let filtered =
+    statusFilter === 'all'
+      ? tasks
+      : tasks.filter((t) => String(t.status_id) === String(statusFilter));
   if (labelIds.length) {
     filtered = filtered.filter((t) => (t.labels ?? []).some((l) => labelIds.includes(l.id)));
   }
@@ -91,7 +88,7 @@ export function arrangeTasks(tasks, statusFilter, sortBy, labelIds = []) {
   } else if (sortBy === 'priority') {
     sorted.sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0)); // urgent first
   } else if (sortBy === 'status') {
-    sorted.sort((a, b) => STATUSES.indexOf(a.status) - STATUSES.indexOf(b.status));
+    sorted.sort((a, b) => (positionById[a.status_id] ?? 0) - (positionById[b.status_id] ?? 0));
   } else if (sortBy === 'title') {
     sorted.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
   }
@@ -115,6 +112,7 @@ export function moveTask(tasks, draggedId, targetId) {
 const sameSection = (a, b) => (a.section_id ?? null) === (b.section_id ?? null);
 
 export default function TaskList({ project, onTasksChanged }) {
+  const { statuses, statusById, positionById } = useStatuses();
   const [tasks, setTasks] = useState([]);
   const [sections, setSections] = useState([]);
   const [newTitle, setNewTitle] = useState('');
@@ -137,14 +135,22 @@ export default function TaskList({ project, onTasksChanged }) {
   const [savingTemplate, setSavingTemplate] = useState(false);
 
   const visibleTasks = useMemo(
-    () => arrangeTasks(tasks, statusFilter, sortBy, labelFilter),
-    [tasks, statusFilter, sortBy, labelFilter],
+    () => arrangeTasks(tasks, statusFilter, sortBy, labelFilter, positionById),
+    [tasks, statusFilter, sortBy, labelFilter, positionById],
   );
 
   // Board applies the label filter but not the status filter (columns = status).
   const boardTasks = useMemo(
     () => arrangeTasks(tasks, 'all', 'default', labelFilter),
     [tasks, labelFilter],
+  );
+
+  const statusFilterOptions = useMemo(
+    () => [
+      { value: 'all', label: 'All statuses' },
+      ...statuses.map((s) => ({ value: String(s.id), label: s.name })),
+    ],
+    [statuses],
   );
 
   // Labels available to filter by = those actually used in this project.
@@ -154,7 +160,7 @@ export default function TaskList({ project, onTasksChanged }) {
     return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [tasks]);
 
-  const doneCount = tasks.filter((t) => t.status === 'done').length;
+  const doneCount = tasks.filter((t) => statusById(t.status_id).is_done).length;
   const pct = tasks.length ? Math.round((doneCount / tasks.length) * 100) : 0;
 
   // Reordering only makes sense when the list reflects the stored manual order
@@ -197,17 +203,21 @@ export default function TaskList({ project, onTasksChanged }) {
     }
   }
 
-  async function changeStatus(task, status) {
+  async function changeStatus(task, statusId) {
     try {
-      await updateTask(project.id, task.id, { status });
+      await updateTask(project.id, task.id, { statusId });
       refreshAll();
     } catch (err) {
       notifyError(err, 'Could not update task');
     }
   }
 
+  // Advance to the next status in the workflow (wraps around).
   function cycleStatus(task) {
-    changeStatus(task, STATUSES[(STATUSES.indexOf(task.status) + 1) % STATUSES.length]);
+    if (!statuses.length) return;
+    const i = statuses.findIndex((s) => s.id === task.status_id);
+    const next = statuses[(i + 1) % statuses.length];
+    changeStatus(task, next.id);
   }
 
   async function removeTask(task) {
@@ -493,11 +503,14 @@ export default function TaskList({ project, onTasksChanged }) {
               ]}
             />
             {view === 'list' && (
-              <SegmentedControl
+              <Select
                 size="xs"
+                w={150}
+                aria-label="Filter by status"
+                data={statusFilterOptions}
                 value={statusFilter}
-                onChange={setStatusFilter}
-                data={STATUS_FILTERS}
+                onChange={(v) => setStatusFilter(v ?? 'all')}
+                allowDeselect={false}
               />
             )}
             {availableLabels.length > 0 && (
