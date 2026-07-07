@@ -9,7 +9,7 @@ export default defineConfig({
     // Forward API calls to the Express server during development so the
     // browser talks to one origin and we avoid CORS locally.
     proxy: {
-      '/api': 'http://localhost:3000',
+      '/api': 'http://localhost:3001',
     },
   },
   test: {
