@@ -41,6 +41,9 @@ export const updateLabel = (id, fields) =>
   request(`/api/labels/${id}`, { method: 'PATCH', body: fields });
 export const deleteLabel = (id) => request(`/api/labels/${id}`, { method: 'DELETE' });
 
+// Search (projects + tasks, scoped to the user)
+export const search = (q) => request(`/api/search?q=${encodeURIComponent(q)}`);
+
 // Templates (reusable project blueprints)
 export const listTemplates = () => request('/api/templates');
 export const getTemplate = (id) => request(`/api/templates/${id}`);

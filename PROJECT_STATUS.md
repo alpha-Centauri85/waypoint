@@ -43,6 +43,7 @@ middleware guards protected routes via `req.session.userId`.
 - `GET/POST /projects/:projectId/sections`, `PATCH/DELETE .../sections/:id`, `PATCH .../sections/reorder`
 - `GET/POST /labels`, `PATCH/DELETE /labels/:id`
 - `GET /templates`, `GET/DELETE /templates/:id`, `POST /templates/from-project`, `POST /templates/:id/instantiate`
+- `GET /search?q=` (projects + tasks, user-scoped)
 - `GET/POST /tasks/:taskId/subtasks`, `PATCH/DELETE /tasks/:taskId/subtasks/:subtaskId`
 
 ## Frontend
@@ -96,6 +97,11 @@ labels/due-dates into blueprints.
 columns (To do / In progress / Done) with counts; compact cards (priority, due,
 labels, notes) open the edit modal on click; dragging a card between columns
 changes its status (`TaskBoard.jsx`). Follow-up: section swimlanes.
+
+**Search:** a debounced global search (`SearchBar`, dashboard) over projects
+(name/description) and tasks (title/notes), user-scoped with LIKE wildcards
+escaped (`GET /api/search`); the dropdown groups projects + tasks and selecting a
+result opens the owning project.
 
 ## Error handling
 

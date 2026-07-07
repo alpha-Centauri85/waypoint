@@ -114,7 +114,13 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
       open the edit modal on click; dragging a card to a column sets that status.
       Covered by a board drag test in `TaskList.test.jsx`. _Follow-up:_ section
       swimlanes on the board.
-- [ ] **17. Search**
+- [x] **17. Search** — global search over the user's projects (name/description)
+      and tasks (title/notes), scoped by `user_id`, LIKE wildcards escaped.
+      `GET /api/search?q=`; `SearchBar` in the dashboard debounces (2+ chars) and
+      shows a results dropdown (projects + tasks with status/project); selecting a
+      result opens the owning project. Covered by `server/test/search.test.js` +
+      `client/src/components/SearchBar.test.jsx`. _Follow-up:_ jump straight to a
+      task (open its detail), and label/status facets.
 - [ ] **18. Comments / activity log**
 - [ ] **19. Project sharing (multi-user collaboration)**
 - [ ] **20. Due-date notifications / reminders**
