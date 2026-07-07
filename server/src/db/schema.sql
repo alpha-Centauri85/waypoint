@@ -128,6 +128,59 @@ CREATE TABLE IF NOT EXISTS template_modules (
 );
 CREATE INDEX IF NOT EXISTS idx_template_modules_module ON template_modules(module_id);
 
+-- === Templates v2 (see docs/labels-sections-templates.md) ===
+-- Module library: reusable, label-tagged task bundles (module_tasks reused).
+-- A template section flagged with a label pulls in every module carrying it.
+CREATE TABLE IF NOT EXISTS module_labels (
+  module_id INTEGER NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
+  label_id  INTEGER NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
+  PRIMARY KEY (module_id, label_id)
+);
+CREATE INDEX IF NOT EXISTS idx_module_labels_label ON module_labels(label_id);
+
+CREATE TABLE IF NOT EXISTS module_subtasks (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  module_task_id INTEGER NOT NULL REFERENCES module_tasks(id) ON DELETE CASCADE,
+  title          TEXT NOT NULL,
+  position       INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_module_subtasks_task ON module_subtasks(module_task_id);
+
+-- A template's fixed skeleton: ordered sections → fixed tasks → subtasks.
+CREATE TABLE IF NOT EXISTS template_sections (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  template_id INTEGER NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  position    INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_template_sections_template ON template_sections(template_id);
+
+-- Labels that flag a section as an injection slot for matching modules.
+CREATE TABLE IF NOT EXISTS template_section_labels (
+  template_section_id INTEGER NOT NULL REFERENCES template_sections(id) ON DELETE CASCADE,
+  label_id            INTEGER NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
+  PRIMARY KEY (template_section_id, label_id)
+);
+
+CREATE TABLE IF NOT EXISTS template_tasks (
+  id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+  template_section_id INTEGER NOT NULL REFERENCES template_sections(id) ON DELETE CASCADE,
+  title               TEXT NOT NULL,
+  status_key          TEXT, -- todo/doing/done, mapped to the user's statuses on instantiate
+  priority            INTEGER NOT NULL DEFAULT 0,
+  notes               TEXT,
+  position            INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_template_tasks_section ON template_tasks(template_section_id);
+
+CREATE TABLE IF NOT EXISTS template_subtasks (
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  template_task_id INTEGER NOT NULL REFERENCES template_tasks(id) ON DELETE CASCADE,
+  title            TEXT NOT NULL,
+  position         INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_template_subtasks_task ON template_subtasks(template_task_id);
+
 CREATE TABLE IF NOT EXISTS subtasks (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   task_id    INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,

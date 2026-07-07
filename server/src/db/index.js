@@ -40,3 +40,38 @@ ensureColumn('tasks', 'status_id', 'INTEGER REFERENCES statuses(id)');
 // Indexes created here (not in schema.sql) so they run after the columns exist.
 db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_section ON tasks(section_id)');
 db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status_id)');
+
+// One-time migration of v1 templates (module = section via template_modules) to
+// v2 (template_sections + template_tasks). Idempotent: it consumes and clears
+// template_modules + the v1 module rows, so the module library starts empty.
+const v1Links = db.prepare('SELECT COUNT(*) AS c FROM template_modules').get().c;
+if (v1Links > 0) {
+  const insSection = db.prepare(
+    'INSERT INTO template_sections (template_id, name, position) VALUES (?, ?, ?)',
+  );
+  const insTask = db.prepare(
+    `INSERT INTO template_tasks (template_section_id, title, status_key, priority, notes, position)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+  );
+  const modTasks = db.prepare(
+    'SELECT title, status, priority, notes FROM module_tasks WHERE module_id = ? ORDER BY position',
+  );
+  const links = db
+    .prepare(
+      `SELECT tm.template_id, tm.module_id, tm.position, m.name
+       FROM template_modules tm JOIN modules m ON m.id = tm.module_id
+       ORDER BY tm.template_id, tm.position`,
+    )
+    .all();
+  db.transaction(() => {
+    for (const l of links) {
+      const sectionId = insSection.run(l.template_id, l.name, l.position).lastInsertRowid;
+      modTasks
+        .all(l.module_id)
+        .forEach((t, i) => insTask.run(sectionId, t.title, t.status, t.priority, t.notes, i));
+    }
+    db.exec(
+      'DELETE FROM template_modules; DELETE FROM module_subtasks; DELETE FROM module_tasks; DELETE FROM module_labels; DELETE FROM modules;',
+    );
+  })();
+}
