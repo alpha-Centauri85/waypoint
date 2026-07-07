@@ -175,6 +175,9 @@ TaskEditModal open→edit→PATCH, `arrangeTasks` sort/filter, and a `moveTask`/
 drop→reorder flow); client builds; live end-to-end runs against a real SQLite
 file confirmed auth/CRUD, editing, drag-reorder (persisted positions + append +
 400 on a bad set), session persistence, helmet headers, and a real 429.
+**Templates v3 verified** (2026-07-08): starting a project from a template and
+applying a label to a module-based section injects the matching module's tasks
+into that section (confirmed live end-to-end, backend + browser).
 
 ## Conventions
 
