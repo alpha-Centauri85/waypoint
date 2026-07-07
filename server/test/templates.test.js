@@ -99,6 +99,49 @@ test('templates are per-user and delete cleanly', async () => {
   expect((await alice.get('/api/templates')).body).toHaveLength(0);
 });
 
+test('create and edit a template from scratch (full-structure save)', async () => {
+  const agent = await freshAgent('editor@x.com');
+
+  const created = await agent.post('/api/templates').send({
+    name: 'Sprint',
+    modules: [
+      { name: 'Planning', tasks: [{ title: 'Groom backlog' }, { title: 'Estimate' }] },
+      { name: 'Build', tasks: [{ title: 'Code', priority: 3 }] },
+    ],
+  });
+  expect(created.status).toBe(201);
+  expect(created.body).toMatchObject({ name: 'Sprint', module_count: 2, task_count: 3 });
+
+  // Edit: rename, drop a module, change tasks.
+  const edited = await agent.patch(`/api/templates/${created.body.id}`).send({
+    name: 'Sprint v2',
+    modules: [{ name: 'Planning', tasks: [{ title: 'Groom backlog', priority: 2 }] }],
+  });
+  expect(edited.status).toBe(200);
+  expect(edited.body).toMatchObject({ name: 'Sprint v2', module_count: 1, task_count: 1 });
+
+  const full = await agent.get(`/api/templates/${created.body.id}`);
+  expect(full.body.modules.map((m) => m.name)).toEqual(['Planning']);
+  expect(full.body.modules[0].tasks).toEqual([
+    { title: 'Groom backlog', status: 'todo', priority: 2, notes: null },
+  ]);
+
+  // Instantiating the edited template reflects the edits.
+  const project = await agent
+    .post(`/api/templates/${created.body.id}/instantiate`)
+    .send({ name: 'From Sprint' });
+  const sections = await agent.get(`/api/projects/${project.body.id}/sections`);
+  expect(sections.body.map((s) => s.name)).toEqual(['Planning']);
+});
+
+test('cannot edit a template you do not own', async () => {
+  const alice = await freshAgent('ta@x.com');
+  const t = (await alice.post('/api/templates').send({ name: 'A' })).body;
+  const bob = await freshAgent('tb@x.com');
+  const res = await bob.patch(`/api/templates/${t.id}`).send({ name: 'hacked' });
+  expect(res.status).toBe(404);
+});
+
 test('cannot template a project you do not own', async () => {
   const alice = await freshAgent('alice2@x.com');
   const pid = await projectWithStructure(alice);

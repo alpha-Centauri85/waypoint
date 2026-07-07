@@ -47,6 +47,9 @@ export const search = (q) => request(`/api/search?q=${encodeURIComponent(q)}`);
 // Templates (reusable project blueprints)
 export const listTemplates = () => request('/api/templates');
 export const getTemplate = (id) => request(`/api/templates/${id}`);
+export const createTemplate = (body) => request('/api/templates', { method: 'POST', body });
+export const updateTemplate = (id, body) =>
+  request(`/api/templates/${id}`, { method: 'PATCH', body });
 export const createTemplateFromProject = (projectId, name) =>
   request('/api/templates/from-project', { method: 'POST', body: { projectId, name } });
 export const instantiateTemplate = (id, name) =>
