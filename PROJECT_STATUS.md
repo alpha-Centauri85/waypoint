@@ -47,6 +47,9 @@ middleware guards protected routes via `req.session.userId`.
 - `GET /search?q=` (projects + tasks, user-scoped)
 - `GET /activities?projectId=&taskId=&limit=` (activity log, user-scoped, most-recent-first)
 - `GET/POST /tasks/:taskId/comments`, `PATCH/DELETE /tasks/:taskId/comments/:id` (author-scoped edit/delete)
+- `GET /projects/:id/statuses`, `GET /projects/:id/labels` (the owner's sets, for any member)
+- `GET /projects/:id/members`, `POST/DELETE .../members/invites[/:id]`, `PATCH/DELETE .../members/:userId`
+- `GET /invites/:token`, `POST /invites/:token/accept`
 - `GET/POST /statuses`, `PATCH/DELETE /statuses/:id`, `PATCH /statuses/reorder`
 - `GET/POST /tasks/:taskId/subtasks`, `PATCH/DELETE /tasks/:taskId/subtasks/:subtaskId`
 
@@ -154,6 +157,26 @@ new **Settings screen** (`SettingsScreen`, from the header menu) alongside globa
 label management. Migrates to per-account when sharing lands. Templates/modules
 store blueprint status as a key and map it to the user's workflow on instantiate.
 
+## Project sharing (multi-user)
+
+Projects can be shared with **owner / editor / viewer** roles. The owner stays
+`projects.user_id`; `project_members` holds editor/viewer collaborators;
+`project_invites` are shareable tokens. `models/members.js` `getProjectAccess`
+returns `{ project, role }` and **every** project/task/section/subtask/comment
+guard authorizes through it — viewers are read-only (403 on writes), delete +
+member management are owner-only. `GET /projects` (`listProjectsForUser`) returns
+owned + shared projects with `role` + `owner_email`. Statuses & labels resolve
+against the project **owner** (task create/update validate/default against the
+owner; `GET /projects/:id/statuses` + `/labels`), so a collaborator's board,
+status pills, and label picker match what the tasks were tagged with — the client
+wraps the project view in a `ProjectStatusesProvider` and passes `projectId` to
+`LabelPicker`. Adding a comment / editing a task logs activity under the actor,
+and the per-project activity feed shows every member's actions with
+`author_email`. Client UI: sidebar marks shared projects (role + "shared by …"),
+role-gated controls (`TaskCard`/`Subtasks`/add forms hidden for viewers), a
+`ShareModal` (generate/copy invite links, roster, role change, remove/leave) from
+the project menu, and an `/invite/:token` accept screen (`InviteAccept`).
+
 ## Error handling
 
 Central Express error handler (`server/src/middleware/errorHandler.js`),
@@ -187,7 +210,7 @@ Disabled under test; limits set by `AUTH_RATE_WINDOW_MS`/`AUTH_RATE_MAX`
 
 ## Verified
 
-ESLint clean; Prettier clean; 84 passing tests (Vitest — 65 server incl. full
+ESLint clean; Prettier clean; 90 passing tests (Vitest — 71 server incl. full
 register→project→task→subtask flow, cross-user isolation, error-handling,
 validation, security, null-clearing merge, and reorder/append; 19 client incl.
 TaskEditModal open→edit→PATCH, `arrangeTasks` sort/filter, and a `moveTask`/DnD

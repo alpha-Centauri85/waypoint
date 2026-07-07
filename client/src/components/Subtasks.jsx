@@ -4,7 +4,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { createSubtask, deleteSubtask, listSubtasks, updateSubtask } from '../api.js';
 import { notifyError } from '../notify.js';
 
-export default function Subtasks({ taskId }) {
+export default function Subtasks({ taskId, canEdit = true }) {
   const [subtasks, setSubtasks] = useState([]);
   const [newTitle, setNewTitle] = useState('');
 
@@ -59,37 +59,42 @@ export default function Subtasks({ taskId }) {
           <Checkbox
             checked={!!s.done}
             onChange={() => toggle(s)}
+            disabled={!canEdit}
             label={
               <Text td={s.done ? 'line-through' : undefined} c={s.done ? 'dimmed' : undefined}>
                 {s.title}
               </Text>
             }
           />
-          <ActionIcon
-            variant="subtle"
-            color="red"
-            size="sm"
-            aria-label="Delete subtask"
-            onClick={() => handleDelete(s)}
-          >
-            <Trash2 size={14} />
-          </ActionIcon>
+          {canEdit && (
+            <ActionIcon
+              variant="subtle"
+              color="red"
+              size="sm"
+              aria-label="Delete subtask"
+              onClick={() => handleDelete(s)}
+            >
+              <Trash2 size={14} />
+            </ActionIcon>
+          )}
         </Group>
       ))}
-      <form onSubmit={handleCreate}>
-        <Group gap="xs" wrap="nowrap">
-          <TextInput
-            size="xs"
-            placeholder="Add subtask"
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.currentTarget.value)}
-            style={{ flex: 1 }}
-          />
-          <ActionIcon type="submit" size="md" variant="light" aria-label="Add subtask">
-            <Plus size={14} />
-          </ActionIcon>
-        </Group>
-      </form>
+      {canEdit && (
+        <form onSubmit={handleCreate}>
+          <Group gap="xs" wrap="nowrap">
+            <TextInput
+              size="xs"
+              placeholder="Add subtask"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.currentTarget.value)}
+              style={{ flex: 1 }}
+            />
+            <ActionIcon type="submit" size="md" variant="light" aria-label="Add subtask">
+              <Plus size={14} />
+            </ActionIcon>
+          </Group>
+        </form>
+      )}
     </Stack>
   );
 }

@@ -152,7 +152,21 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
       inline edit, delete; Cmd/Ctrl+Enter posts). Covered by
       `server/test/{activities,comments}.test.js`.
       _Next (with 19):_ show comment authors once projects can be shared.
-- [ ] **19. Project sharing (multi-user collaboration)**
+- [x] **19. Project sharing (multi-user collaboration)** (L) — owner/editor/viewer
+      roles. `project_members` (editor/viewer; owner stays `projects.user_id`) +
+      `project_invites` (shareable tokens). `models/members.js` resolves access
+      (`getProjectAccess` → role) and all project/task/section/subtask/comment
+      guards authorize through it; viewers are read-only (403), delete + member
+      management are owner-only. Statuses & labels resolve against the project
+      **owner** (task create/update validate + default against the owner; the
+      per-project statuses/labels endpoints feed a `ProjectStatusesProvider` and
+      the project-scoped `LabelPicker`). Activity feed is project-scoped for shared
+      projects with author attribution. Client: sidebar shows shared projects
+      (role + owner), role-aware controls, a `ShareModal` (invite links, roster,
+      role change, remove/leave), and an `/invite/:token` accept screen
+      (`InviteAccept`). Covered by `server/test/sharing.test.js`. _Follow-ups:_
+      email delivery of invites, search across shared projects, per-section
+      viewer-gating polish.
 - [ ] **20. Due-date notifications / reminders**
 - [x] **22. Settings / configuration screen** (M) — a dedicated Settings screen
       (`SettingsScreen`, reached from the header user menu; the logo returns home).
