@@ -11,7 +11,7 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
-import { Boxes, ChevronDown, LogOut, Settings as SettingsIcon } from 'lucide-react';
+import { Boxes, ChevronDown, LayoutTemplate, LogOut, Settings as SettingsIcon } from 'lucide-react';
 import { theme } from './theme.js';
 import { getMe, logout } from './api.js';
 import { StatusesProvider } from './statuses.jsx';
@@ -19,13 +19,14 @@ import Logo from './components/Logo.jsx';
 import AuthForm from './components/AuthForm.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import SettingsScreen from './components/SettingsScreen.jsx';
-import ModulesModal from './components/ModulesModal.jsx';
+import TemplatesPage from './components/TemplatesPage.jsx';
+import ModulesPage from './components/ModulesPage.jsx';
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState('dashboard'); // 'dashboard' | 'settings'
-  const [modulesOpen, setModulesOpen] = useState(false);
+  const [view, setView] = useState('dashboard'); // dashboard | settings | templates | modules
+  const [focusProjectId, setFocusProjectId] = useState(null); // project to select after nav
 
   useEffect(() => {
     getMe()
@@ -37,6 +38,12 @@ export default function App() {
   async function handleLogout() {
     await logout();
     setUser(null);
+    setView('dashboard');
+  }
+
+  // Jump to a project (e.g. after instantiating a template) and select it.
+  function openProject(project) {
+    setFocusProjectId(project.id);
     setView('dashboard');
   }
 
@@ -54,11 +61,23 @@ export default function App() {
             onLogout={handleLogout}
             onHome={() => setView('dashboard')}
             onSettings={() => setView('settings')}
-            onModules={() => setModulesOpen(true)}
+            onModules={() => setView('modules')}
+            onTemplates={() => setView('templates')}
           >
-            {view === 'settings' ? <SettingsScreen /> : <Dashboard />}
+            {view === 'settings' ? (
+              <SettingsScreen />
+            ) : view === 'templates' ? (
+              <TemplatesPage onInstantiated={openProject} />
+            ) : view === 'modules' ? (
+              <ModulesPage />
+            ) : (
+              <Dashboard
+                onOpenTemplates={() => setView('templates')}
+                focusProjectId={focusProjectId}
+                onFocused={() => setFocusProjectId(null)}
+              />
+            )}
           </AppFrame>
-          <ModulesModal opened={modulesOpen} onClose={() => setModulesOpen(false)} />
         </StatusesProvider>
       ) : (
         <AuthForm onAuthed={setUser} />
@@ -68,7 +87,7 @@ export default function App() {
 }
 
 // The signed-in shell: a sticky brand header over the working area.
-function AppFrame({ user, onLogout, onHome, onSettings, onModules, children }) {
+function AppFrame({ user, onLogout, onHome, onSettings, onModules, onTemplates, children }) {
   return (
     <Box mih="100vh" bg="dark.7">
       <Box
@@ -104,6 +123,9 @@ function AppFrame({ user, onLogout, onHome, onSettings, onModules, children }) {
             </Button>
           </Menu.Target>
           <Menu.Dropdown>
+            <Menu.Item leftSection={<LayoutTemplate size={15} />} onClick={onTemplates}>
+              Templates
+            </Menu.Item>
             <Menu.Item leftSection={<Boxes size={15} />} onClick={onModules}>
               Module library
             </Menu.Item>

@@ -113,6 +113,66 @@ test('instantiating injects modules into sections by matching label', async () =
   expect(subs.body.map((s) => s.title)).toEqual(['Draft', 'Sign']);
 });
 
+test('instantiate applies per-section label overrides chosen at creation time', async () => {
+  const agent = await freshAgent();
+  const legal = (await agent.post('/api/labels').send({ name: 'legal' })).body;
+  const design = (await agent.post('/api/labels').send({ name: 'design' })).body;
+
+  await agent
+    .post('/api/modules')
+    .send({ name: 'Legal review', labelIds: [legal.id], tasks: [{ title: 'NDA' }] });
+  await agent
+    .post('/api/modules')
+    .send({ name: 'Design kit', labelIds: [design.id], tasks: [{ title: 'Moodboard' }] });
+
+  // A module-based section with NO stored slots — labels are applied at creation.
+  const template = (
+    await agent.post('/api/templates').send({
+      name: 'Flexible',
+      sections: [{ name: 'Modules', labelIds: [], tasks: [] }],
+    })
+  ).body;
+  const sectionId = (await agent.get(`/api/templates/${template.id}`)).body.sections[0].id;
+
+  const created = await agent
+    .post(`/api/templates/${template.id}/instantiate`)
+    .send({ name: 'Proj', sectionLabels: [{ sectionId, labelIds: [design.id] }] });
+
+  const tasks = await agent.get(`/api/projects/${created.body.id}/tasks`);
+  expect(tasks.body.map((t) => t.title)).toEqual(['Moodboard']); // only the chosen label's module
+});
+
+test('overwrite an existing template from a project replaces its structure', async () => {
+  const agent = await freshAgent();
+  const original = (
+    await agent.post('/api/templates').send({
+      name: 'Keep the name',
+      sections: [{ name: 'Old', tasks: [{ title: 'Old task' }] }],
+    })
+  ).body;
+
+  const project = (await agent.post('/api/projects').send({ name: 'Source' })).body;
+  await agent.post(`/api/projects/${project.id}/tasks`).send({ title: 'Fresh task' });
+
+  const res = await agent
+    .post('/api/templates/from-project')
+    .send({ projectId: project.id, templateId: original.id });
+  expect(res.status).toBe(200);
+  expect(res.body.name).toBe('Keep the name'); // name preserved
+
+  const full = await agent.get(`/api/templates/${original.id}`);
+  expect(full.body.sections).toHaveLength(1);
+  expect(full.body.sections[0].name).toBe('General');
+  expect(full.body.sections[0].tasks.map((t) => t.title)).toEqual(['Fresh task']);
+});
+
+test('from-project requires a name when creating a new template', async () => {
+  const agent = await freshAgent();
+  const project = (await agent.post('/api/projects').send({ name: 'Source' })).body;
+  const res = await agent.post('/api/templates/from-project').send({ projectId: project.id });
+  expect(res.status).toBe(400);
+});
+
 test('templates are per-user; editing / instantiating others is 404', async () => {
   const alice = await freshAgent('alice@x.com');
   const t = (await alice.post('/api/templates').send({ name: 'A' })).body;

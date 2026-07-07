@@ -21,15 +21,16 @@ import { createProject, deleteProject, listProjects } from '../api.js';
 import { notifyError } from '../notify.js';
 import TaskList from './TaskList.jsx';
 import ProjectEditModal from './ProjectEditModal.jsx';
-import TemplatesModal from './TemplatesModal.jsx';
 import SearchBar from './SearchBar.jsx';
 
-export default function Dashboard() {
+// Templates and the module library live on their own pages (header menu);
+// `onOpenTemplates` navigates there. `focusProjectId` selects a project after
+// returning from another page (e.g. a template just created it).
+export default function Dashboard({ onOpenTemplates, focusProjectId, onFocused }) {
   const [projects, setProjects] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [newName, setNewName] = useState('');
   const [editingProject, setEditingProject] = useState(null);
-  const [templatesOpen, setTemplatesOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   async function refresh() {
@@ -48,6 +49,15 @@ export default function Dashboard() {
   useEffect(() => {
     refresh();
   }, []);
+
+  // A project created elsewhere (e.g. instantiated from a template): select it.
+  useEffect(() => {
+    if (focusProjectId == null) return;
+    setSelectedId(focusProjectId);
+    refresh();
+    onFocused?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusProjectId]);
 
   async function handleCreate(e) {
     e.preventDefault();
@@ -137,7 +147,7 @@ export default function Dashboard() {
               mt="xs"
               fullWidth
               leftSection={<LayoutTemplate size={14} />}
-              onClick={() => setTemplatesOpen(true)}
+              onClick={onOpenTemplates}
             >
               Start from a template
             </Button>
@@ -158,15 +168,6 @@ export default function Dashboard() {
         opened={!!editingProject}
         onClose={() => setEditingProject(null)}
         onSaved={refresh}
-      />
-
-      <TemplatesModal
-        opened={templatesOpen}
-        onClose={() => setTemplatesOpen(false)}
-        onInstantiated={(project) => {
-          setSelectedId(project.id);
-          refresh();
-        }}
       />
     </>
   );

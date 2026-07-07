@@ -124,6 +124,17 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
       result opens the owning project. Covered by `server/test/search.test.js` +
       `client/src/components/SearchBar.test.jsx`. _Follow-up:_ jump straight to a
       task (open its detail), and label/status facets.
+- [x] **26. Templates v3 — apply labels at project-creation** (M) — refines v2.
+      Templates + module library are **dedicated full pages** (header user menu),
+      each a list + full-width inline editor (retired the cramped modals).
+      Sections read as **standard** (fixed tasks) or **module-based** (label slots
+      / no fixed tasks). The **Start-a-project** dialog (`InstantiateTemplateModal`)
+      lets you apply labels per module-based section (pre-filled from stored slots)
+      with a live module preview — sent as `sectionLabels` overrides to
+      `instantiateTemplate`. The editor can **Save & start a project**; "Save as
+      template" from a project now offers **new or overwrite** an existing template
+      (`/templates/from-project` optional `templateId`, warning before overwrite).
+      Covered by `server/test/templates.test.js`. See `docs/templates-v3/`.
 - [ ] **18. Comments / activity log**
 - [ ] **19. Project sharing (multi-user collaboration)**
 - [ ] **20. Due-date notifications / reminders**

@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react';
-import { ActionIcon, Badge, Button, Group, Loader, Modal, Paper, Stack, Text } from '@mantine/core';
-import { notifications } from '@mantine/notifications';
-import { LayoutTemplate, Pencil, Plus, Trash2 } from 'lucide-react';
-import { deleteTemplate, instantiateTemplate, listTemplates } from '../api.js';
+import { ActionIcon, Badge, Button, Group, Loader, Paper, Stack, Text, Title } from '@mantine/core';
+import { LayoutTemplate, Pencil, Play, Plus, Trash2 } from 'lucide-react';
+import { deleteTemplate, listTemplates } from '../api.js';
 import { notifyError } from '../notify.js';
-import TemplateEditorModal from './TemplateEditorModal.jsx';
+import TemplateEditor from './TemplateEditor.jsx';
+import InstantiateTemplateModal from './InstantiateTemplateModal.jsx';
 
-// Browse saved templates: start a new project from one, edit it, or delete it.
-export default function TemplatesModal({ opened, onClose, onInstantiated }) {
+// Full page for managing templates: a list, with a full-width editor that opens
+// in place. `onInstantiated(project)` bubbles a newly created project up so the
+// app can jump to it. Editing is a view state: null = list, 'new' or an id = edit.
+export default function TemplatesPage({ onInstantiated }) {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [busyId, setBusyId] = useState(null);
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editorId, setEditorId] = useState(null); // null = new template
+  const [editing, setEditing] = useState(null); // null | 'new' | id
+  const [useId, setUseId] = useState(null);
 
   async function refresh() {
     setLoading(true);
@@ -26,22 +27,8 @@ export default function TemplatesModal({ opened, onClose, onInstantiated }) {
   }
 
   useEffect(() => {
-    if (opened) refresh();
-  }, [opened]);
-
-  async function startFromTemplate(t) {
-    setBusyId(t.id);
-    try {
-      const project = await instantiateTemplate(t.id, t.name);
-      notifications.show({ message: `Created “${project.name}” from template`, color: 'teal' });
-      onInstantiated(project);
-      onClose();
-    } catch (err) {
-      notifyError(err, 'Could not create project from template');
-    } finally {
-      setBusyId(null);
-    }
-  }
+    refresh();
+  }, []);
 
   async function remove(t) {
     try {
@@ -52,33 +39,36 @@ export default function TemplatesModal({ opened, onClose, onInstantiated }) {
     }
   }
 
-  function openEditor(id) {
-    setEditorId(id);
-    setEditorOpen(true);
+  if (editing !== null) {
+    return (
+      <TemplateEditor
+        templateId={editing === 'new' ? null : editing}
+        onBack={() => setEditing(null)}
+        onSaved={(saved) => {
+          refresh();
+          if (editing === 'new' && saved?.id) setEditing(saved.id);
+        }}
+        onInstantiated={onInstantiated}
+      />
+    );
   }
 
   return (
-    <Modal opened={opened} onClose={onClose} title="Templates" centered>
-      <Group justify="space-between" mb="sm">
-        <Text size="sm" c="dark.2">
-          Reusable project blueprints.
-        </Text>
-        <Button
-          size="xs"
-          variant="light"
-          leftSection={<Plus size={14} />}
-          onClick={() => openEditor(null)}
-        >
+    <>
+      <Group justify="space-between" mb="lg">
+        <Title order={2}>Templates</Title>
+        <Button leftSection={<Plus size={16} />} onClick={() => setEditing('new')}>
           New template
         </Button>
       </Group>
+
       {loading ? (
-        <Group justify="center" py="lg">
+        <Group justify="center" py="xl">
           <Loader color="teal" />
         </Group>
       ) : templates.length === 0 ? (
-        <Stack align="center" gap="xs" py="lg">
-          <LayoutTemplate size={36} color="var(--mantine-color-dark-3)" />
+        <Stack align="center" gap="xs" py="xl">
+          <LayoutTemplate size={40} color="var(--mantine-color-dark-3)" />
           <Text c="dark.2" ta="center">
             No templates yet. Create one, or open a project and choose <b>Save as template</b>.
           </Text>
@@ -86,7 +76,7 @@ export default function TemplatesModal({ opened, onClose, onInstantiated }) {
       ) : (
         <Stack gap="xs">
           {templates.map((t) => (
-            <Paper key={t.id} withBorder p="sm" radius="md">
+            <Paper key={t.id} withBorder p="md" radius="md">
               <Group justify="space-between" wrap="nowrap">
                 <div style={{ minWidth: 0 }}>
                   <Text fw={600} truncate>
@@ -102,14 +92,14 @@ export default function TemplatesModal({ opened, onClose, onInstantiated }) {
                   </Group>
                 </div>
                 <Group gap="xs" wrap="nowrap">
-                  <Button size="xs" loading={busyId === t.id} onClick={() => startFromTemplate(t)}>
+                  <Button size="xs" leftSection={<Play size={13} />} onClick={() => setUseId(t.id)}>
                     Use
                   </Button>
                   <ActionIcon
                     variant="subtle"
                     color="gray"
                     aria-label="Edit template"
-                    onClick={() => openEditor(t.id)}
+                    onClick={() => setEditing(t.id)}
                   >
                     <Pencil size={15} />
                   </ActionIcon>
@@ -128,12 +118,15 @@ export default function TemplatesModal({ opened, onClose, onInstantiated }) {
         </Stack>
       )}
 
-      <TemplateEditorModal
-        opened={editorOpen}
-        templateId={editorId}
-        onClose={() => setEditorOpen(false)}
-        onSaved={refresh}
+      <InstantiateTemplateModal
+        opened={useId !== null}
+        templateId={useId}
+        onClose={() => setUseId(null)}
+        onInstantiated={(project) => {
+          setUseId(null);
+          onInstantiated?.(project);
+        }}
       />
-    </Modal>
+    </>
   );
 }

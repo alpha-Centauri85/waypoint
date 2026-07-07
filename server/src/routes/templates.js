@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/requireAuth.js';
-import { notFound } from '../lib/errors.js';
+import { badRequest, notFound } from '../lib/errors.js';
 import { validateBody } from '../lib/validate.js';
 import {
   createTemplateSchema,
@@ -16,6 +16,7 @@ import {
   instantiateTemplate,
   listTemplates,
   updateTemplate,
+  updateTemplateFromProject,
 } from '../models/templates.js';
 
 const router = Router();
@@ -30,9 +31,17 @@ router.post('/', validateBody(createTemplateSchema), (req, res) => {
   res.status(201).json(createTemplate(req.session.userId, req.body));
 });
 
-// Save an existing project as a reusable template (sections → modules).
+// Save a project as a template: create a new one (name), or overwrite an existing
+// one (templateId).
 router.post('/from-project', validateBody(fromProjectSchema), (req, res) => {
-  const template = createTemplateFromProject(req.session.userId, req.body.projectId, req.body.name);
+  const { projectId, name, templateId } = req.body;
+  if (templateId) {
+    const template = updateTemplateFromProject(req.session.userId, templateId, projectId);
+    if (!template) throw notFound('Template or project not found');
+    return res.json(template);
+  }
+  if (!name) throw badRequest('name is required to create a template');
+  const template = createTemplateFromProject(req.session.userId, projectId, name);
   if (!template) throw notFound('Project not found');
   res.status(201).json(template);
 });
@@ -52,7 +61,12 @@ router.patch('/:id', validateBody(updateTemplateSchema), (req, res) => {
 
 // Build a new project from a template. Returns the created project.
 router.post('/:id/instantiate', validateBody(instantiateSchema), (req, res) => {
-  const project = instantiateTemplate(req.session.userId, Number(req.params.id), req.body.name);
+  const project = instantiateTemplate(
+    req.session.userId,
+    Number(req.params.id),
+    req.body.name,
+    req.body.sectionLabels,
+  );
   if (!project) throw notFound('Template not found');
   res.status(201).json(project);
 });

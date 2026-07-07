@@ -84,9 +84,14 @@ creates the fixed skeleton, then **injects** the tasks of every library module
 whose labels match a section's slots (appended after the fixed tasks). Both reuse
 `createProject`/`createSection`/`createTask`/`createSubtask` inside a
 `db.transaction` (models may compose other models, but only labels/sections/tasks/
-subtasks are leaf modules — avoid import cycles). The client edits modules
-(`ModulesModal`/`ModuleEditorModal`, from the header menu) and templates
-(`TemplatesModal`/`TemplateEditorModal`) via a shared `BlueprintTasksEditor`. Foreign keys are enforced per-connection
+subtasks are leaf modules — avoid import cycles). Templates and the module library
+are **dedicated full pages** (header user menu → `TemplatesPage`/`ModulesPage`,
+switched via `App`'s `view` state), each a list + a full-width inline editor
+(`TemplateEditor`/`ModuleEditor`) sharing a `BlueprintTasksEditor`. Starting a
+project from a template opens `InstantiateTemplateModal` (apply labels per
+module-based section); it returns the new project so `App` selects it on the
+dashboard. "Save as template" from a project is `SaveAsTemplateModal` (new or
+overwrite). Foreign keys are enforced per-connection
 via `PRAGMA foreign_keys = ON` in `server/src/db/index.js`. **Ownership is
 enforced in every query**: project reads/writes are scoped by `user_id`, task
 queries by `project_id`, and subtask authorization joins task→project→user

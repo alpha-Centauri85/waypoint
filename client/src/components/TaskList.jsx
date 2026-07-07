@@ -9,7 +9,6 @@ import {
   Group,
   Loader,
   Menu,
-  Modal,
   Popover,
   Progress,
   SegmentedControl,
@@ -32,11 +31,9 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { notifications } from '@mantine/notifications';
 import {
   createSection,
   createTask,
-  createTemplateFromProject,
   deleteSection,
   deleteTask,
   listSections,
@@ -52,6 +49,7 @@ import TaskCard from './TaskCard.jsx';
 import TaskBoard from './TaskBoard.jsx';
 import TaskEditModal from './TaskEditModal.jsx';
 import LabelManagerModal from './LabelManagerModal.jsx';
+import SaveAsTemplateModal from './SaveAsTemplateModal.jsx';
 
 const labelSwatch = (c) => `var(--mantine-color-${c}-6)`;
 
@@ -131,8 +129,6 @@ export default function TaskList({ project, onTasksChanged }) {
   const [dropZoneSectionId, setDropZoneSectionId] = useState(undefined); // undefined = none
   const [loading, setLoading] = useState(true);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
-  const [templateName, setTemplateName] = useState('');
-  const [savingTemplate, setSavingTemplate] = useState(false);
 
   const visibleTasks = useMemo(
     () => arrangeTasks(tasks, statusFilter, sortBy, labelFilter, positionById),
@@ -254,22 +250,6 @@ export default function TaskList({ project, onTasksChanged }) {
       refreshAll(); // tasks become ungrouped
     } catch (err) {
       notifyError(err, 'Could not delete section');
-    }
-  }
-
-  // --- templates ---
-  async function saveAsTemplate() {
-    const name = templateName.trim();
-    if (!name) return;
-    setSavingTemplate(true);
-    try {
-      const template = await createTemplateFromProject(project.id, name);
-      setTemplateModalOpen(false);
-      notifications.show({ message: `Saved “${template.name}” as a template`, color: 'teal' });
-    } catch (err) {
-      notifyError(err, 'Could not save template');
-    } finally {
-      setSavingTemplate(false);
     }
   }
 
@@ -455,10 +435,7 @@ export default function TaskList({ project, onTasksChanged }) {
             <Menu.Dropdown>
               <Menu.Item
                 leftSection={<LayoutTemplate size={15} />}
-                onClick={() => {
-                  setTemplateName(project.name);
-                  setTemplateModalOpen(true);
-                }}
+                onClick={() => setTemplateModalOpen(true)}
               >
                 Save as template
               </Menu.Item>
@@ -722,41 +699,12 @@ export default function TaskList({ project, onTasksChanged }) {
         onSaved={refreshAll}
       />
 
-      <Modal
+      <SaveAsTemplateModal
         opened={templateModalOpen}
+        projectId={project.id}
+        projectName={project.name}
         onClose={() => setTemplateModalOpen(false)}
-        title="Save as template"
-        centered
-      >
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            saveAsTemplate();
-          }}
-        >
-          <Stack>
-            <Text size="sm" c="dark.2">
-              Captures this project’s sections and tasks as a reusable template. You can start new
-              projects from it later.
-            </Text>
-            <TextInput
-              label="Template name"
-              value={templateName}
-              onChange={(e) => setTemplateName(e.currentTarget.value)}
-              required
-              data-autofocus
-            />
-            <Group justify="flex-end">
-              <Button type="button" variant="default" onClick={() => setTemplateModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" loading={savingTemplate}>
-                Save template
-              </Button>
-            </Group>
-          </Stack>
-        </form>
-      </Modal>
+      />
 
       <LabelManagerModal
         opened={manageLabelsOpen}

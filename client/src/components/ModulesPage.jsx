@@ -4,28 +4,26 @@ import {
   Badge,
   Button,
   Collapse,
-  Divider,
   Group,
   Loader,
-  Modal,
   Paper,
   Stack,
   Text,
   Textarea,
+  Title,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { Boxes, Layers, Pencil, Plus, Trash2 } from 'lucide-react';
 import { bulkCreateModules, deleteModule, listModules } from '../api.js';
 import { notifyError } from '../notify.js';
-import ModuleEditorModal from './ModuleEditorModal.jsx';
+import ModuleEditor from './ModuleEditor.jsx';
 
-// The module library: reusable, label-tagged task bundles. Bulk-create shells to
-// flesh out later, or build one in full; each is edited in ModuleEditorModal.
-export default function ModulesModal({ opened, onClose }) {
+// Full page for the module library: reusable, label-tagged task bundles. Bulk-add
+// shells, or build one in full; each opens a full-width inline editor.
+export default function ModulesPage() {
   const [modules, setModules] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editorId, setEditorId] = useState(null); // null = new module
+  const [editing, setEditing] = useState(null); // null | 'new' | id
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkText, setBulkText] = useState('');
   const [bulkSaving, setBulkSaving] = useState(false);
@@ -42,13 +40,8 @@ export default function ModulesModal({ opened, onClose }) {
   }
 
   useEffect(() => {
-    if (opened) refresh();
-  }, [opened]);
-
-  function openEditor(id) {
-    setEditorId(id);
-    setEditorOpen(true);
-  }
+    refresh();
+  }, []);
 
   async function remove(m) {
     try {
@@ -79,35 +72,44 @@ export default function ModulesModal({ opened, onClose }) {
     }
   }
 
+  if (editing !== null) {
+    return (
+      <ModuleEditor
+        moduleId={editing === 'new' ? null : editing}
+        onBack={() => setEditing(null)}
+        onSaved={(saved) => {
+          refresh();
+          if (editing === 'new' && saved?.id) setEditing(saved.id);
+        }}
+      />
+    );
+  }
+
   return (
-    <Modal opened={opened} onClose={onClose} title="Module library" size="lg" centered>
-      <Group justify="space-between" mb="sm">
-        <Text size="sm" c="dark.2">
-          Reusable task bundles, injected into templates by matching labels.
-        </Text>
+    <>
+      <Group justify="space-between" mb="xs">
+        <Title order={2}>Module library</Title>
         <Group gap="xs">
           <Button
-            size="xs"
             variant="subtle"
             color="gray"
-            leftSection={<Layers size={14} />}
+            leftSection={<Layers size={16} />}
             onClick={() => setBulkOpen((o) => !o)}
           >
             Bulk add
           </Button>
-          <Button
-            size="xs"
-            variant="light"
-            leftSection={<Plus size={14} />}
-            onClick={() => openEditor(null)}
-          >
+          <Button leftSection={<Plus size={16} />} onClick={() => setEditing('new')}>
             New module
           </Button>
         </Group>
       </Group>
+      <Text size="sm" c="dark.2" mb="md">
+        Reusable task bundles, injected into a project’s section when you apply a matching label at
+        creation time.
+      </Text>
 
       <Collapse in={bulkOpen}>
-        <Paper withBorder p="sm" radius="md" mb="sm" bg="dark.7">
+        <Paper withBorder p="md" radius="md" mb="md" bg="dark.7">
           <Textarea
             label="Create shells"
             placeholder="One module name per line"
@@ -125,12 +127,12 @@ export default function ModulesModal({ opened, onClose }) {
       </Collapse>
 
       {loading ? (
-        <Group justify="center" py="lg">
+        <Group justify="center" py="xl">
           <Loader color="teal" />
         </Group>
       ) : modules.length === 0 ? (
-        <Stack align="center" gap="xs" py="lg">
-          <Boxes size={36} color="var(--mantine-color-dark-3)" />
+        <Stack align="center" gap="xs" py="xl">
+          <Boxes size={40} color="var(--mantine-color-dark-3)" />
           <Text c="dark.2" ta="center">
             No modules yet. Create one, then tag it with labels so templates can pull it in.
           </Text>
@@ -138,7 +140,7 @@ export default function ModulesModal({ opened, onClose }) {
       ) : (
         <Stack gap="xs">
           {modules.map((m) => (
-            <Paper key={m.id} withBorder p="sm" radius="md">
+            <Paper key={m.id} withBorder p="md" radius="md">
               <Group justify="space-between" wrap="nowrap">
                 <div style={{ minWidth: 0 }}>
                   <Text fw={600} truncate>
@@ -160,7 +162,7 @@ export default function ModulesModal({ opened, onClose }) {
                     variant="subtle"
                     color="gray"
                     aria-label="Edit module"
-                    onClick={() => openEditor(m.id)}
+                    onClick={() => setEditing(m.id)}
                   >
                     <Pencil size={15} />
                   </ActionIcon>
@@ -178,20 +180,6 @@ export default function ModulesModal({ opened, onClose }) {
           ))}
         </Stack>
       )}
-
-      <Divider my="md" />
-      <Group justify="flex-end">
-        <Button variant="default" onClick={onClose}>
-          Done
-        </Button>
-      </Group>
-
-      <ModuleEditorModal
-        opened={editorOpen}
-        moduleId={editorId}
-        onClose={() => setEditorOpen(false)}
-        onSaved={refresh}
-      />
-    </Modal>
+    </>
   );
 }

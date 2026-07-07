@@ -28,12 +28,27 @@ export const createTemplateSchema = z.object({
 
 export const updateTemplateSchema = createTemplateSchema;
 
+// Save a project as a template: either create a new one (`name` required) or
+// overwrite an existing one (`templateId` present; `name` ignored). The route
+// enforces that one of the two is supplied.
 export const fromProjectSchema = z.object({
   projectId: z.number().int().positive(),
-  name,
+  name: name.optional(),
+  templateId: z.number().int().positive().optional(),
 });
 
-export const instantiateSchema = z.object({ name });
+// Per-section label overrides chosen at project-creation time: for each template
+// section, the labels that decide which library modules get injected. Omitted
+// sections fall back to the section's stored slot labels.
+const sectionLabelOverride = z.object({
+  sectionId: z.number().int().positive(),
+  labelIds: z.array(z.number().int().positive()),
+});
+
+export const instantiateSchema = z.object({
+  name,
+  sectionLabels: z.array(sectionLabelOverride).optional(),
+});
 
 // Shared blueprint-task shape for the module library.
 export { blueprintTask };

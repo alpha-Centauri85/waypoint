@@ -131,10 +131,11 @@ export const updateTemplate = db.transaction(
   },
 );
 
-// Capture a project as a template: real sections + ungrouped → template sections,
-// tasks (+subtasks) → template tasks. Status is stored as a key. Section labels
-// aren't captured (projects don't label sections) — add slots in the editor.
-export const createTemplateFromProject = db.transaction((userId, projectId, name) => {
+// Capture a project's structure as template sections: real sections + an
+// ungrouped "General" section, each with its tasks (+subtasks). Status is stored
+// as a key. Section labels aren't captured (projects don't label sections) — add
+// slots in the editor. Returns { description, sections }. Null if not found.
+function captureProject(userId, projectId) {
   const project = getProject(projectId, userId);
   if (!project) return null;
 
@@ -157,34 +158,67 @@ export const createTemplateFromProject = db.transaction((userId, projectId, name
   if (ungrouped.length)
     sections.push({ name: 'General', labelIds: [], tasks: ungrouped.map(asTask) });
 
-  return createTemplate(userId, { name, description: project.description ?? null, sections });
+  return { description: project.description ?? null, sections };
+}
+
+// Save a project as a brand-new template.
+export const createTemplateFromProject = db.transaction((userId, projectId, name) => {
+  const captured = captureProject(userId, projectId);
+  if (!captured) return null;
+  return createTemplate(userId, {
+    name,
+    description: captured.description,
+    sections: captured.sections,
+  });
+});
+
+// Overwrite an existing template's structure with a project's current one. Keeps
+// the template's name; replaces description + sections. Any existing section
+// label slots are lost (the project doesn't carry them) — re-add in the editor.
+export const updateTemplateFromProject = db.transaction((userId, templateId, projectId) => {
+  const template = templateById.get(templateId, userId);
+  if (!template) return null;
+  const captured = captureProject(userId, projectId);
+  if (!captured) return null;
+  return updateTemplate(userId, templateId, {
+    name: template.name,
+    description: captured.description,
+    sections: captured.sections,
+  });
 });
 
 // Build a new project: fixed sections + tasks (+subtasks), then inject the tasks
-// of every library module carrying one of each section's labels.
-export const instantiateTemplate = db.transaction((userId, templateId, name) => {
-  const template = getTemplate(templateId, userId);
-  if (!template) return null;
+// of every library module carrying one of each section's labels. `sectionLabels`
+// (optional, chosen at creation time) overrides a section's stored slot labels by
+// template-section id — this is where the user "applies relevant labels" per the
+// v3 flow; sections not listed fall back to their stored slots.
+export const instantiateTemplate = db.transaction(
+  (userId, templateId, name, sectionLabels = []) => {
+    const template = getTemplate(templateId, userId);
+    if (!template) return null;
 
-  const project = createProject(userId, { name, description: template.description ?? null });
-  const addTask = (sectionId, t) => {
-    const task = createTask(project.id, {
-      title: t.title,
-      statusId: statusIdForKey(userId, t.status),
-      priority: t.priority ?? 0,
-      notes: t.notes ?? null,
-      sectionId,
-    });
-    for (const title of t.subtasks ?? []) createSubtask(task.id, { title });
-  };
+    const overrides = new Map(sectionLabels.map((o) => [o.sectionId, o.labelIds]));
+    const project = createProject(userId, { name, description: template.description ?? null });
+    const addTask = (sectionId, t) => {
+      const task = createTask(project.id, {
+        title: t.title,
+        statusId: statusIdForKey(userId, t.status),
+        priority: t.priority ?? 0,
+        notes: t.notes ?? null,
+        sectionId,
+      });
+      for (const title of t.subtasks ?? []) createSubtask(task.id, { title });
+    };
 
-  for (const section of template.sections) {
-    const created = createSection(project.id, { name: section.name });
-    for (const t of section.tasks) addTask(created.id, t);
-    // Inject modules whose labels match this section's slots.
-    for (const module of modulesForLabels(userId, section.labelIds)) {
-      for (const t of module.tasks) addTask(created.id, t);
+    for (const section of template.sections) {
+      const created = createSection(project.id, { name: section.name });
+      for (const t of section.tasks) addTask(created.id, t);
+      // Inject modules matching the labels chosen for this section (override or slots).
+      const labelIds = overrides.has(section.id) ? overrides.get(section.id) : section.labelIds;
+      for (const module of modulesForLabels(userId, labelIds)) {
+        for (const t of module.tasks) addTask(created.id, t);
+      }
     }
-  }
-  return project;
-});
+    return project;
+  },
+);
