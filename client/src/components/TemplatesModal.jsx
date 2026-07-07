@@ -94,7 +94,7 @@ export default function TemplatesModal({ opened, onClose, onInstantiated }) {
                   </Text>
                   <Group gap={6} mt={4}>
                     <Badge size="xs" variant="light" color="gray">
-                      {t.module_count} {t.module_count === 1 ? 'section' : 'sections'}
+                      {t.section_count} {t.section_count === 1 ? 'section' : 'sections'}
                     </Badge>
                     <Badge size="xs" variant="light" color="gray">
                       {t.task_count} {t.task_count === 1 ? 'task' : 'tasks'}

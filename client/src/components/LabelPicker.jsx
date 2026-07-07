@@ -29,7 +29,7 @@ const swatch = (c) => `var(--mantine-color-${c}-6)`;
 
 // Assign labels to a task (multi-select of the user's library) and create new
 // ones inline. `value` is an array of label ids; `onChange` receives the new array.
-export default function LabelPicker({ value, onChange }) {
+export default function LabelPicker({ value, onChange, label = 'Labels' }) {
   const [labels, setLabels] = useState([]);
   const [newName, setNewName] = useState('');
   const [newColor, setNewColor] = useState('teal');
@@ -56,7 +56,7 @@ export default function LabelPicker({ value, onChange }) {
   return (
     <Stack gap="xs">
       <MultiSelect
-        label="Labels"
+        label={label}
         placeholder={labels.length ? 'Add labels' : 'No labels yet — create one below'}
         data={labels.map((l) => ({ value: String(l.id), label: l.name }))}
         value={value.map(String)}

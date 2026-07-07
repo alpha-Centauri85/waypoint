@@ -49,6 +49,15 @@ export const deleteStatus = (id) => request(`/api/statuses/${id}`, { method: 'DE
 export const reorderStatuses = (orderedIds) =>
   request('/api/statuses/reorder', { method: 'PATCH', body: { orderedIds } });
 
+// Modules (reusable, label-tagged task bundles — the library)
+export const listModules = () => request('/api/modules');
+export const getModule = (id) => request(`/api/modules/${id}`);
+export const createModule = (body) => request('/api/modules', { method: 'POST', body });
+export const bulkCreateModules = (names) =>
+  request('/api/modules/bulk', { method: 'POST', body: { names } });
+export const updateModule = (id, body) => request(`/api/modules/${id}`, { method: 'PATCH', body });
+export const deleteModule = (id) => request(`/api/modules/${id}`, { method: 'DELETE' });
+
 // Search (projects + tasks, scoped to the user)
 export const search = (q) => request(`/api/search?q=${encodeURIComponent(q)}`);
 

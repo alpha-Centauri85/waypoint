@@ -11,7 +11,7 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
-import { ChevronDown, LogOut, Settings as SettingsIcon } from 'lucide-react';
+import { Boxes, ChevronDown, LogOut, Settings as SettingsIcon } from 'lucide-react';
 import { theme } from './theme.js';
 import { getMe, logout } from './api.js';
 import { StatusesProvider } from './statuses.jsx';
@@ -19,11 +19,13 @@ import Logo from './components/Logo.jsx';
 import AuthForm from './components/AuthForm.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import SettingsScreen from './components/SettingsScreen.jsx';
+import ModulesModal from './components/ModulesModal.jsx';
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('dashboard'); // 'dashboard' | 'settings'
+  const [modulesOpen, setModulesOpen] = useState(false);
 
   useEffect(() => {
     getMe()
@@ -52,9 +54,11 @@ export default function App() {
             onLogout={handleLogout}
             onHome={() => setView('dashboard')}
             onSettings={() => setView('settings')}
+            onModules={() => setModulesOpen(true)}
           >
             {view === 'settings' ? <SettingsScreen /> : <Dashboard />}
           </AppFrame>
+          <ModulesModal opened={modulesOpen} onClose={() => setModulesOpen(false)} />
         </StatusesProvider>
       ) : (
         <AuthForm onAuthed={setUser} />
@@ -64,7 +68,7 @@ export default function App() {
 }
 
 // The signed-in shell: a sticky brand header over the working area.
-function AppFrame({ user, onLogout, onHome, onSettings, children }) {
+function AppFrame({ user, onLogout, onHome, onSettings, onModules, children }) {
   return (
     <Box mih="100vh" bg="dark.7">
       <Box
@@ -100,6 +104,9 @@ function AppFrame({ user, onLogout, onHome, onSettings, children }) {
             </Button>
           </Menu.Target>
           <Menu.Dropdown>
+            <Menu.Item leftSection={<Boxes size={15} />} onClick={onModules}>
+              Module library
+            </Menu.Item>
             <Menu.Item leftSection={<SettingsIcon size={15} />} onClick={onSettings}>
               Settings
             </Menu.Item>
