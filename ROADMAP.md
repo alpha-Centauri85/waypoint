@@ -96,8 +96,11 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
       `docs/labels-sections-templates.md`). CRUD at `/api/labels`; assign/create
       from the task & project edit modals (`LabelPicker`), embedded in responses
       (foreign ids ignored), colored chips on rows. Labels are first-class (stable
-      ids) so they can key future templates/modules. _Follow-ups:_ filter by
-      label + a label management UI. Covered by `server/test/labels.test.js`.
+      ids) so they can key future templates/modules. **Filter by label** (a
+      Labels popover in list + board views, any-of) and a **label management UI**
+      (`LabelManagerModal`: rename/recolor/delete, opened from the project actions
+      menu) are done. Covered by `server/test/labels.test.js` +
+      `client/src/components/TaskList.test.jsx`.
 - [x] **16b. Sections (task grouping)** — `sections` table + nullable
       `tasks.section_id` (deleting a section ungroups its tasks). Full CRUD +
       reorder at `/api/projects/:id/sections`; tasks carry a `sectionId`
