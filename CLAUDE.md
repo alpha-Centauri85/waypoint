@@ -73,12 +73,20 @@ backfilled by key; the client reads status display from a `StatusesProvider`
 context by `status_id`. `is_done` drives progress + overdue. Additive column
 changes use the idempotent `ensureColumn` helper in `db/index.js` (a fuller
 versioned-migration system is still on the roadmap).
-**Templates** are reusable blueprints: `templates` → `template_modules` →
-`modules` → `module_tasks` (all user-scoped). "Save as template" derives
-modules from a project's sections; "instantiate" builds a new project with a
-section per module. Instantiation reuses `createProject`/`createSection`/
-`createTask` inside a `db.transaction` (models may compose other models, but only
-labels/sections/tasks are leaf modules — avoid import cycles). Foreign keys are enforced per-connection
+**Templates (v2)** are reusable project blueprints: `templates` →
+`template_sections` → `template_tasks` → `template_subtasks`, plus per-section
+label "slots" (`template_section_labels`). Blueprint task status is stored as a
+key and mapped to the user's workflow on instantiate. **Modules** are a separate
+reusable library — `modules` → `module_tasks` → `module_subtasks` + labels
+(`module_labels`) — not template-private. "Save as template" captures a project's
+sections + tasks + subtasks (ungrouped tasks → a "General" section). "Instantiate"
+creates the fixed skeleton, then **injects** the tasks of every library module
+whose labels match a section's slots (appended after the fixed tasks). Both reuse
+`createProject`/`createSection`/`createTask`/`createSubtask` inside a
+`db.transaction` (models may compose other models, but only labels/sections/tasks/
+subtasks are leaf modules — avoid import cycles). The client edits modules
+(`ModulesModal`/`ModuleEditorModal`, from the header menu) and templates
+(`TemplatesModal`/`TemplateEditorModal`) via a shared `BlueprintTasksEditor`. Foreign keys are enforced per-connection
 via `PRAGMA foreign_keys = ON` in `server/src/db/index.js`. **Ownership is
 enforced in every query**: project reads/writes are scoped by `user_id`, task
 queries by `project_id`, and subtask authorization joins task→project→user
