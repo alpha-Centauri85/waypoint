@@ -127,6 +127,27 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
 - [ ] **18. Comments / activity log**
 - [ ] **19. Project sharing (multi-user collaboration)**
 - [ ] **20. Due-date notifications / reminders**
+- [ ] **22. Settings / configuration screen** (M) — a dedicated Settings area
+      (its own screen/route, reached from the header user menu) that centralizes
+      configuration instead of burying it in per-project modals. First home:
+      **global label management** — list/add/rename/recolor/delete labels in one
+      place (promotes today's `LabelManagerModal`, which is reachable only from a
+      project's ⋮ menu and has no top-level "add label"). Later tenants: custom
+      statuses (23), account/password, and app preferences. Keep the existing
+      inline label-create in the pickers.
+- [ ] **23. Custom statuses (workflow states)** (L) — replace the hardcoded
+      `todo`/`doing`/`done` with user-defined states. Sketch: a `statuses` table
+      (name, color, `position`, and an `is_done`/terminal flag) and `tasks`
+      reference a `status_id` (FK) instead of the current TEXT+CHECK column.
+      Board columns, the status filter, status sort, and the click-to-cycle badge
+      all derive from the configured states; **progress % and overdue highlighting
+      key off the terminal flag** (they currently hardcode `status === 'done'`).
+      Managed from the Settings screen (22). Migration: seed the three defaults for
+      existing users and map existing `tasks.status` text → the new rows; templates'
+      `module_tasks.status` needs the same treatment. **Open questions:** scope —
+      per-user (one workflow, like labels) vs per-project (more flexible, more UI);
+      whether more than one state can be terminal. Decide before building (like the
+      label-scope call in `docs/labels-sections-templates.md`).
 - [x] **21. Templates & modules** — reusable project blueprints composed of
       modules (saved sections). Model: `templates` → `template_modules` →
       `modules` → `module_tasks`. Create from scratch or **save a project as a
@@ -143,9 +164,17 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## Recommended next step
 
-Phases 0–1 complete; brand design implemented; Phase 2 steps 9–10 done; Phase 3
-steps 12 (single-origin serving) + 15 (backups) done. Remaining Phase 3 work —
-**13 (Windows service)** and **14 (HTTPS reverse proxy)** — is host-specific
-setup on the media server itself (scripts + a deploy guide, not app code). After
-that: the **expanded product roadmap** (custom views, reporting/dashboards,
-labels, search, comments, sharing) or step 11 (optimistic UI) polish.
+**Done so far:** Phases 0–1, the brand design, Phase 2 (9–10), Phase 3 single-
+origin serving (12) + backups (15), and Phase 4 labels+priority (16), sections
+(16b), board view, search (17), templates & modules (21).
+
+**Next candidates:**
+
+- **22. Settings screen + 23. custom statuses** — requested; do 22 first (it's
+  the home for managing 23). Custom statuses is the larger, higher-impact one.
+- **18. Activity log** / **task comments** — start the collaboration arc; useful
+  solo too.
+- **Deploy** — host-specific (13/14); the app is deploy-ready whenever a host is
+  chosen (any Node host, not just Windows).
+- Smaller polish: step 11 (optimistic UI), reorder in the template editor, board
+  swimlanes by section, jump-to-task from search.
