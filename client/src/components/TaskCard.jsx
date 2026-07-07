@@ -1,5 +1,5 @@
-import { ActionIcon, Badge, Group, Paper, Text, Tooltip } from '@mantine/core';
-import { CalendarClock, FileText, Flag, GripVertical, Pencil, Trash2 } from 'lucide-react';
+import { ActionIcon, Badge, ColorSwatch, Group, Menu, Paper, Text, Tooltip } from '@mantine/core';
+import { CalendarClock, Check, FileText, Flag, GripVertical, Pencil, Trash2 } from 'lucide-react';
 import dayjs from 'dayjs';
 import { PRIORITY_META } from '../priority.js';
 import { useStatuses } from '../statuses.jsx';
@@ -10,11 +10,11 @@ export function isOverdue(task, isDone) {
   return task.due_date && !isDone && dayjs(task.due_date).isBefore(dayjs(), 'day');
 }
 
-// One task row: status pill (click to cycle), title, priority/notes/due/label
-// meta, edit + delete, and its subtasks. Drag behaviour is driven by the parent
-// via `drag` (handlers + dragging/dragOver flags) so reordering can be scoped.
-export default function TaskCard({ task, reorderEnabled, drag, onCycle, onEdit, onDelete }) {
-  const { statusById } = useStatuses();
+// One task row: status pill (click to pick a status), title, priority/notes/due/
+// label meta, edit + delete, and its subtasks. Drag behaviour is driven by the
+// parent via `drag` (handlers + dragging/dragOver flags) so reordering can be scoped.
+export default function TaskCard({ task, reorderEnabled, drag, onSetStatus, onEdit, onDelete }) {
+  const { statuses, statusById } = useStatuses();
   const status = statusById(task.status_id);
   return (
     <Paper
@@ -42,17 +42,38 @@ export default function TaskCard({ task, reorderEnabled, drag, onCycle, onEdit, 
               />
             </Tooltip>
           )}
-          <Tooltip label="Click to advance status" openDelay={400}>
-            <Badge
-              color={status.color}
-              variant={status.is_done ? 'filled' : 'light'}
-              w={100}
-              style={{ cursor: 'pointer', flexShrink: 0 }}
-              onClick={onCycle}
-            >
-              {status.name}
-            </Badge>
-          </Tooltip>
+          <Menu shadow="md" width={180} position="bottom-start" withinPortal>
+            <Menu.Target>
+              <Badge
+                color={status.color}
+                variant={status.is_done ? 'filled' : 'light'}
+                w={110}
+                aria-label={`Status: ${status.name} — change`}
+                style={{ cursor: 'pointer', flexShrink: 0 }}
+              >
+                {status.name}
+              </Badge>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Label>Set status</Menu.Label>
+              {statuses.map((s) => (
+                <Menu.Item
+                  key={s.id}
+                  leftSection={
+                    <ColorSwatch
+                      color={`var(--mantine-color-${s.color}-6)`}
+                      size={12}
+                      withShadow={false}
+                    />
+                  }
+                  rightSection={s.id === task.status_id ? <Check size={14} /> : null}
+                  onClick={() => onSetStatus(s.id)}
+                >
+                  {s.name}
+                </Menu.Item>
+              ))}
+            </Menu.Dropdown>
+          </Menu>
           <Text truncate>{task.title}</Text>
           {task.priority > 0 && (
             <Tooltip label={`${PRIORITY_META[task.priority].label} priority`}>

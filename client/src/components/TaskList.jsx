@@ -212,14 +212,6 @@ export default function TaskList({ project, onTasksChanged }) {
     }
   }
 
-  // Advance to the next status in the workflow (wraps around).
-  function cycleStatus(task) {
-    if (!statuses.length) return;
-    const i = statuses.findIndex((s) => s.id === task.status_id);
-    const next = statuses[(i + 1) % statuses.length];
-    changeStatus(task, next.id);
-  }
-
   async function removeTask(task) {
     try {
       await deleteTask(project.id, task.id);
@@ -421,7 +413,7 @@ export default function TaskList({ project, onTasksChanged }) {
       task={task}
       reorderEnabled={reorderEnabled}
       drag={taskDragProps(task)}
-      onCycle={() => cycleStatus(task)}
+      onSetStatus={(statusId) => changeStatus(task, statusId)}
       onEdit={() => setEditingTask(task)}
       onDelete={() => removeTask(task)}
     />
