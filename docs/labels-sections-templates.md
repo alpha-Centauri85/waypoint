@@ -78,6 +78,41 @@ useful on their own and are the runtime form a module instantiates into.
 - Can a module be shared across users/workspaces (when sharing lands)?
 - Instantiation: copy-once (snapshot) vs. keep a live link to the template?
 
+## Template model v2 — fixed skeleton + label-injected modules (roadmap item 25)
+
+**Proposed target** (supersedes the shipped v1, where a template is just ordered
+"modules = sections" with no subtasks). A template is a blueprint for a repeatable
+project holding two kinds of content:
+
+1. **Fixed structure** — ordered **sections**, each with **fixed tasks**, each
+   with **subtasks**. Always created on instantiation.
+2. **Modular injection** — a section can be flagged with **labels**; on
+   instantiation, every library **module** carrying a matching label has its tasks
+   injected into that section (appended after the fixed tasks).
+
+This keeps D2: a module's contents stay explicit; the label is the deliberate
+"inject modules here" wiring between a section slot and the module library (24).
+
+Instantiate = for each section: create it → add fixed tasks (+subtasks) → for each
+section label, append the tasks (+subtasks) of every module tagged with it.
+
+Schema sketch (retires the v1 `template_modules`/module-as-section mapping):
+
+- `template_sections` (id, template_id, name, position)
+- `template_section_labels` (template_section_id, label_id) — injection slots
+- `template_tasks` (id, template_section_id, title, status, priority, notes, position)
+- `template_subtasks` (id, template_task_id, title, position)
+- Module library: `modules` (id, user_id, name), `module_labels` (module_id,
+  label_id), `module_tasks` (+ `module_subtasks`).
+
+Migration: convert each existing template's modules → `template_sections` with
+their `module_tasks` → `template_tasks` (no labels/subtasks); the module library
+starts empty.
+
+Open decisions: injection **automatic** (all matching modules) vs
+**pick-at-instantiation** (choose optional modules per project); confirm injected
+tasks append after fixed ones.
+
 ## Module library (roadmap item 24)
 
 Shipped templates treat modules as **template-private** (save-as-template and the
