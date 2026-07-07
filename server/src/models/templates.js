@@ -2,11 +2,15 @@ import { db } from '../db/index.js';
 import { createProject, getProject } from './projects.js';
 import { createSection, listSections } from './sections.js';
 import { createTask, listTasks } from './tasks.js';
+import { createSubtask, listSubtasks } from './subtasks.js';
 import { listStatuses, statusIdForKey } from './statuses.js';
+import { modulesForLabels } from './modules.js';
 
-// Templates are reusable project blueprints. A template owns an ordered set of
-// modules (reusable "section blueprints"); each module owns ordered task
-// blueprints. Everything is user-scoped. See docs/labels-sections-templates.md.
+// Templates v2: a reusable project blueprint = a fixed skeleton (ordered
+// sections → fixed tasks → subtasks) plus per-section label "slots". On
+// instantiation the fixed content is created, then every library module carrying
+// one of a section's labels has its tasks injected there.
+// See docs/labels-sections-templates.md.
 
 const insertTemplate = db.prepare(
   'INSERT INTO templates (user_id, name, description) VALUES (?, ?, ?)',
@@ -16,36 +20,43 @@ const updateTemplateRow = db.prepare(
   'UPDATE templates SET name = ?, description = ? WHERE id = ? AND user_id = ?',
 );
 const delTemplate = db.prepare('DELETE FROM templates WHERE id = ? AND user_id = ?');
-const moduleIdsForTemplate = db.prepare(
-  'SELECT module_id FROM template_modules WHERE template_id = ?',
+
+const insertSection = db.prepare(
+  'INSERT INTO template_sections (template_id, name, position) VALUES (?, ?, ?)',
 );
-const insertModule = db.prepare('INSERT INTO modules (user_id, name) VALUES (?, ?)');
-const insertModuleTask = db.prepare(
-  `INSERT INTO module_tasks (module_id, title, status, priority, notes, position)
+const sectionsByTemplate = db.prepare(
+  'SELECT * FROM template_sections WHERE template_id = ? ORDER BY position',
+);
+const clearSections = db.prepare('DELETE FROM template_sections WHERE template_id = ?');
+const insertSectionLabel = db.prepare(
+  'INSERT OR IGNORE INTO template_section_labels (template_section_id, label_id) VALUES (?, ?)',
+);
+const sectionLabels = db.prepare(`
+  SELECT l.id, l.name, l.color FROM labels l
+  JOIN template_section_labels tsl ON tsl.label_id = l.id
+  WHERE tsl.template_section_id = ?
+  ORDER BY l.name COLLATE NOCASE
+`);
+const insertTemplateTask = db.prepare(
+  `INSERT INTO template_tasks (template_section_id, title, status_key, priority, notes, position)
    VALUES (?, ?, ?, ?, ?, ?)`,
 );
-const linkModule = db.prepare(
-  'INSERT INTO template_modules (template_id, module_id, position) VALUES (?, ?, ?)',
+const tasksBySection = db.prepare(
+  'SELECT * FROM template_tasks WHERE template_section_id = ? ORDER BY position',
 );
-
-// A template with its ordered modules and each module's ordered tasks.
-const modulesForTemplate = db.prepare(`
-  SELECT m.id, m.name, tm.position
-  FROM modules m
-  JOIN template_modules tm ON tm.module_id = m.id
-  WHERE tm.template_id = ?
-  ORDER BY tm.position
-`);
-const tasksForModule = db.prepare(
-  'SELECT title, status, priority, notes FROM module_tasks WHERE module_id = ? ORDER BY position',
+const insertTemplateSubtask = db.prepare(
+  'INSERT INTO template_subtasks (template_task_id, title, position) VALUES (?, ?, ?)',
 );
+const subtasksByTask = db.prepare(
+  'SELECT title FROM template_subtasks WHERE template_task_id = ? ORDER BY position',
+);
+const ownedLabelIds = db.prepare('SELECT id FROM labels WHERE user_id = ?');
 
-// Rollup counts for the picker (module + task totals per template).
 const COUNTS = `
-    (SELECT COUNT(*) FROM template_modules tm WHERE tm.template_id = t.id) AS module_count,
-    (SELECT COUNT(*) FROM template_modules tm
-       JOIN module_tasks mt ON mt.module_id = tm.module_id
-       WHERE tm.template_id = t.id) AS task_count`;
+    (SELECT COUNT(*) FROM template_sections ts WHERE ts.template_id = t.id) AS section_count,
+    (SELECT COUNT(*) FROM template_sections ts
+       JOIN template_tasks tt ON tt.template_section_id = ts.id
+       WHERE ts.template_id = t.id) AS task_count`;
 const listWithCounts = db.prepare(
   `SELECT t.*, ${COUNTS} FROM templates t WHERE t.user_id = ? ORDER BY t.created_at DESC`,
 );
@@ -60,10 +71,18 @@ export function listTemplates(userId) {
 export function getTemplate(id, userId) {
   const template = templateById.get(id, userId);
   if (!template) return null;
-  template.modules = modulesForTemplate.all(id).map((m) => ({
-    id: m.id,
-    name: m.name,
-    tasks: tasksForModule.all(m.id),
+  template.sections = sectionsByTemplate.all(id).map((s) => ({
+    id: s.id,
+    name: s.name,
+    labels: sectionLabels.all(s.id),
+    labelIds: sectionLabels.all(s.id).map((l) => l.id),
+    tasks: tasksBySection.all(s.id).map((t) => ({
+      title: t.title,
+      status: t.status_key,
+      priority: t.priority,
+      notes: t.notes,
+      subtasks: subtasksByTask.all(t.id).map((st) => st.title),
+    })),
   }));
   return template;
 }
@@ -72,103 +91,99 @@ export function deleteTemplate(id, userId) {
   return delTemplate.run(id, userId).changes > 0;
 }
 
-// Replace a template's modules (and their tasks) with the given structure.
-// Because modules are template-owned here, wiping + rebuilding is the simplest
-// correct save for the editor. Must run inside a transaction.
-function replaceModules(templateId, userId, modules) {
-  const existing = moduleIdsForTemplate.all(templateId).map((r) => r.module_id);
-  if (existing.length) {
-    const placeholders = existing.map(() => '?').join(',');
-    // Cascades remove module_tasks and template_modules rows.
-    db.prepare(`DELETE FROM modules WHERE user_id = ? AND id IN (${placeholders})`).run(
-      userId,
-      ...existing,
-    );
-  }
-  modules.forEach((m, i) => {
-    const moduleId = insertModule.run(userId, m.name).lastInsertRowid;
-    linkModule.run(templateId, moduleId, i);
-    (m.tasks ?? []).forEach((t, j) =>
-      insertModuleTask.run(
-        moduleId,
+// Rebuild a template's whole section/task/subtask/label structure. In a transaction.
+function replaceSections(templateId, userId, sections) {
+  const owned = new Set(ownedLabelIds.all(userId).map((r) => r.id));
+  clearSections.run(templateId); // cascades tasks, subtasks, section labels
+  sections.forEach((s, i) => {
+    const sectionId = insertSection.run(templateId, s.name, i).lastInsertRowid;
+    for (const labelId of s.labelIds ?? []) {
+      if (owned.has(labelId)) insertSectionLabel.run(sectionId, labelId);
+    }
+    (s.tasks ?? []).forEach((t, j) => {
+      const taskId = insertTemplateTask.run(
+        sectionId,
         t.title,
         t.status ?? 'todo',
         t.priority ?? 0,
         t.notes ?? null,
         j,
-      ),
-    );
+      ).lastInsertRowid;
+      (t.subtasks ?? []).forEach((title, k) => insertTemplateSubtask.run(taskId, title, k));
+    });
   });
 }
 
-// Create a template from an explicit structure (blank, or authored in the editor).
 export const createTemplate = db.transaction(
-  (userId, { name, description = null, modules = [] }) => {
-    const templateId = insertTemplate.run(userId, name, description).lastInsertRowid;
-    replaceModules(templateId, userId, modules);
-    return oneWithCounts.get(templateId, userId);
-  },
-);
-
-// Replace a template's name/description and its whole module structure.
-export const updateTemplate = db.transaction(
-  (userId, id, { name, description = null, modules = [] }) => {
-    if (!templateById.get(id, userId)) return null;
-    updateTemplateRow.run(name, description, id, userId);
-    replaceModules(id, userId, modules);
+  (userId, { name, description = null, sections = [] }) => {
+    const id = insertTemplate.run(userId, name, description).lastInsertRowid;
+    replaceSections(id, userId, sections);
     return oneWithCounts.get(id, userId);
   },
 );
 
-// Capture an existing project as a template: each section becomes a module, and
-// ungrouped tasks (if any) become a trailing "General" module. Returns the new
-// template (with counts). Transactional so a partial template is never left.
+export const updateTemplate = db.transaction(
+  (userId, id, { name, description = null, sections = [] }) => {
+    if (!templateById.get(id, userId)) return null;
+    updateTemplateRow.run(name, description, id, userId);
+    replaceSections(id, userId, sections);
+    return oneWithCounts.get(id, userId);
+  },
+);
+
+// Capture a project as a template: real sections + ungrouped → template sections,
+// tasks (+subtasks) → template tasks. Status is stored as a key. Section labels
+// aren't captured (projects don't label sections) — add slots in the editor.
 export const createTemplateFromProject = db.transaction((userId, projectId, name) => {
   const project = getProject(projectId, userId);
   if (!project) return null;
 
-  const sections = listSections(projectId);
-  const allTasks = listTasks(projectId);
-  // Blueprints store status as a legacy key (todo/doing/done). Map each task's
-  // custom status back to a key; custom statuses without one fall back to 'todo'
-  // (templates keep the default keys until templates v2).
   const keyByStatusId = new Map(listStatuses(userId).map((s) => [s.id, s.key]));
-  const asBlueprint = (t) => ({
+  const allTasks = listTasks(projectId);
+  const asTask = (t) => ({
     title: t.title,
     status: keyByStatusId.get(t.status_id) ?? 'todo',
     priority: t.priority,
     notes: t.notes,
+    subtasks: listSubtasks(t.id).map((st) => st.title),
   });
 
-  const modules = sections.map((s) => ({
+  const sections = listSections(projectId).map((s) => ({
     name: s.name,
-    tasks: allTasks.filter((t) => t.section_id === s.id).map(asBlueprint),
+    labelIds: [],
+    tasks: allTasks.filter((t) => t.section_id === s.id).map(asTask),
   }));
   const ungrouped = allTasks.filter((t) => (t.section_id ?? null) === null);
-  if (ungrouped.length) modules.push({ name: 'General', tasks: ungrouped.map(asBlueprint) });
+  if (ungrouped.length)
+    sections.push({ name: 'General', labelIds: [], tasks: ungrouped.map(asTask) });
 
-  return createTemplate(userId, { name, description: project.description ?? null, modules });
+  return createTemplate(userId, { name, description: project.description ?? null, sections });
 });
 
-// Build a new project from a template: a section per module, tasks copied in.
-// Returns the created project. Transactional.
+// Build a new project: fixed sections + tasks (+subtasks), then inject the tasks
+// of every library module carrying one of each section's labels.
 export const instantiateTemplate = db.transaction((userId, templateId, name) => {
   const template = getTemplate(templateId, userId);
   if (!template) return null;
 
   const project = createProject(userId, { name, description: template.description ?? null });
-  for (const module of template.modules) {
-    const section = createSection(project.id, { name: module.name });
-    for (const t of module.tasks) {
-      createTask(project.id, {
-        title: t.title,
-        // Blueprint statuses are stored as legacy keys (todo/doing/done); map to
-        // the user's matching status (falls back to their first).
-        statusId: statusIdForKey(userId, t.status),
-        priority: t.priority,
-        notes: t.notes,
-        sectionId: section.id,
-      });
+  const addTask = (sectionId, t) => {
+    const task = createTask(project.id, {
+      title: t.title,
+      statusId: statusIdForKey(userId, t.status),
+      priority: t.priority ?? 0,
+      notes: t.notes ?? null,
+      sectionId,
+    });
+    for (const title of t.subtasks ?? []) createSubtask(task.id, { title });
+  };
+
+  for (const section of template.sections) {
+    const created = createSection(project.id, { name: section.name });
+    for (const t of section.tasks) addTask(created.id, t);
+    // Inject modules whose labels match this section's slots.
+    for (const module of modulesForLabels(userId, section.labelIds)) {
+      for (const t of module.tasks) addTask(created.id, t);
     }
   }
   return project;
