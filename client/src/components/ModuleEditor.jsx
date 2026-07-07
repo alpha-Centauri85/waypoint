@@ -1,14 +1,24 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Divider, Group, Loader, Modal, Stack, TextInput } from '@mantine/core';
+import {
+  ActionIcon,
+  Alert,
+  Button,
+  Divider,
+  Group,
+  Loader,
+  Stack,
+  Text,
+  TextInput,
+} from '@mantine/core';
 import { notifications } from '@mantine/notifications';
+import { ArrowLeft } from 'lucide-react';
 import { createModule, getModule, updateModule } from '../api.js';
 import LabelPicker from './LabelPicker.jsx';
 import BlueprintTasksEditor from './BlueprintTasksEditor.jsx';
 
-// Create a blank library module (moduleId null) or edit an existing one. A module
-// is a reusable, label-tagged bundle of tasks injected into template sections
-// whose label slots match. Edited locally and saved in one POST/PATCH.
-export default function ModuleEditorModal({ opened, moduleId, onClose, onSaved }) {
+// Full-page module editor. A module is a reusable, label-tagged bundle of tasks
+// injected into template sections whose label slots match. Saved in one POST/PATCH.
+export default function ModuleEditor({ moduleId, onBack, onSaved }) {
   const [name, setName] = useState('');
   const [labelIds, setLabelIds] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -17,7 +27,6 @@ export default function ModuleEditorModal({ opened, moduleId, onClose, onSaved }
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!opened) return;
     setError(null);
     if (!moduleId) {
       setName('');
@@ -41,7 +50,7 @@ export default function ModuleEditorModal({ opened, moduleId, onClose, onSaved }
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, [opened, moduleId]);
+  }, [moduleId]);
 
   async function save(e) {
     e.preventDefault();
@@ -67,8 +76,7 @@ export default function ModuleEditorModal({ opened, moduleId, onClose, onSaved }
         message: moduleId ? 'Module updated' : 'Module created',
         color: 'teal',
       });
-      onSaved(saved);
-      onClose();
+      onSaved?.(saved);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -77,20 +85,28 @@ export default function ModuleEditorModal({ opened, moduleId, onClose, onSaved }
   }
 
   return (
-    <Modal
-      opened={opened}
-      onClose={onClose}
-      title={moduleId ? 'Edit module' : 'New module'}
-      size="lg"
-      centered
-    >
+    <>
+      <Group justify="space-between" mb="lg">
+        <Group gap="xs">
+          <ActionIcon variant="subtle" color="gray" aria-label="Back to modules" onClick={onBack}>
+            <ArrowLeft size={18} />
+          </ActionIcon>
+          <Text fw={700} fz="xl">
+            {moduleId ? 'Edit module' : 'New module'}
+          </Text>
+        </Group>
+        <Button onClick={save} loading={saving}>
+          Save module
+        </Button>
+      </Group>
+
       {loading ? (
-        <Group justify="center" py="lg">
+        <Group justify="center" py="xl">
           <Loader color="teal" />
         </Group>
       ) : (
         <form onSubmit={save}>
-          <Stack>
+          <Stack maw={860}>
             <TextInput
               label="Name"
               value={name}
@@ -99,7 +115,7 @@ export default function ModuleEditorModal({ opened, moduleId, onClose, onSaved }
               data-autofocus
             />
             <LabelPicker value={labelIds} onChange={setLabelIds} />
-            <Divider label="Tasks" labelPosition="left" />
+            <Divider label="Tasks" labelPosition="left" mt="sm" />
             <BlueprintTasksEditor tasks={tasks} onChange={setTasks} />
 
             {error && (
@@ -107,17 +123,9 @@ export default function ModuleEditorModal({ opened, moduleId, onClose, onSaved }
                 {error}
               </Alert>
             )}
-            <Group justify="flex-end">
-              <Button type="button" variant="default" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button type="submit" loading={saving}>
-                Save module
-              </Button>
-            </Group>
           </Stack>
         </form>
       )}
-    </Modal>
+    </>
   );
 }

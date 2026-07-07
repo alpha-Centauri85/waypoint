@@ -6,38 +6,37 @@ import {
   Divider,
   Group,
   Loader,
-  Modal,
   Paper,
-  ScrollArea,
   Stack,
   Text,
   Textarea,
   TextInput,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Play, Plus, Trash2 } from 'lucide-react';
 import { createTemplate, getTemplate, updateTemplate } from '../api.js';
 import LabelPicker from './LabelPicker.jsx';
 import BlueprintTasksEditor from './BlueprintTasksEditor.jsx';
+import InstantiateTemplateModal from './InstantiateTemplateModal.jsx';
 
 // Stable local keys for editing rows (section ids aren't stable across saves).
 let seq = 0;
 const nextKey = () => `k${(seq += 1)}`;
 
-// Create a blank template (templateId null) or edit an existing one. A template is
-// an ordered set of sections; each has fixed tasks (with subtasks) plus label
-// "slots" — on instantiate, library modules matching a slot are injected there.
-// Edited locally and saved in one PATCH/POST (server rebuilds the structure).
-export default function TemplateEditorModal({ opened, templateId, onClose, onSaved }) {
+// Full-page template editor (blank when templateId is null, else edits an
+// existing one). A template is an ordered set of sections; each has fixed tasks
+// (standard) and/or label "slots" (module-based) — at project creation, modules
+// matching a section's labels are injected. Saved in one POST/PATCH.
+export default function TemplateEditor({ templateId, onBack, onSaved, onInstantiated }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [instantiateId, setInstantiateId] = useState(null);
 
   useEffect(() => {
-    if (!opened) return;
     setError(null);
     if (!templateId) {
       setName('');
@@ -66,7 +65,7 @@ export default function TemplateEditorModal({ opened, templateId, onClose, onSav
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, [opened, templateId]);
+  }, [templateId]);
 
   const addSection = () =>
     setSections((ss) => [...ss, { key: nextKey(), name: '', labelIds: [], tasks: [] }]);
@@ -74,12 +73,12 @@ export default function TemplateEditorModal({ opened, templateId, onClose, onSav
     setSections((ss) => ss.map((s) => (s.key === k ? { ...s, ...patch } : s)));
   const removeSection = (k) => setSections((ss) => ss.filter((s) => s.key !== k));
 
-  async function save(e) {
-    e.preventDefault();
+  // Persist; returns the saved template (with id) or null. Doesn't navigate.
+  async function persist() {
     const trimmed = name.trim();
     if (!trimmed) {
       setError('Template name is required');
-      return;
+      return null;
     }
     const payloadSections = sections
       .map((s) => ({
@@ -106,34 +105,66 @@ export default function TemplateEditorModal({ opened, templateId, onClose, onSav
       const saved = templateId
         ? await updateTemplate(templateId, body)
         : await createTemplate(body);
-      notifications.show({
-        message: templateId ? 'Template updated' : 'Template created',
-        color: 'teal',
-      });
-      onSaved(saved);
-      onClose();
+      onSaved?.(saved);
+      return saved;
     } catch (err) {
       setError(err.message);
+      return null;
     } finally {
       setSaving(false);
     }
   }
 
+  async function save(e) {
+    e.preventDefault();
+    const saved = await persist();
+    if (saved)
+      notifications.show({
+        message: templateId ? 'Template updated' : 'Template created',
+        color: 'teal',
+      });
+  }
+
+  async function saveAndStart() {
+    setError(null);
+    const saved = await persist();
+    if (saved) setInstantiateId(saved.id);
+  }
+
   return (
-    <Modal
-      opened={opened}
-      onClose={onClose}
-      title={templateId ? 'Edit template' : 'New template'}
-      size="lg"
-      centered
-    >
+    <>
+      <Group justify="space-between" mb="lg">
+        <Group gap="xs">
+          <ActionIcon variant="subtle" color="gray" aria-label="Back to templates" onClick={onBack}>
+            <ArrowLeft size={18} />
+          </ActionIcon>
+          <Text fw={700} fz="xl">
+            {templateId ? 'Edit template' : 'New template'}
+          </Text>
+        </Group>
+        <Group gap="xs">
+          <Button
+            variant="light"
+            color="teal"
+            leftSection={<Play size={15} />}
+            onClick={saveAndStart}
+            loading={saving}
+          >
+            Save &amp; start project
+          </Button>
+          <Button onClick={save} loading={saving}>
+            Save template
+          </Button>
+        </Group>
+      </Group>
+
       {loading ? (
-        <Group justify="center" py="lg">
+        <Group justify="center" py="xl">
           <Loader color="teal" />
         </Group>
       ) : (
         <form onSubmit={save}>
-          <Stack>
+          <Stack maw={860}>
             <TextInput
               label="Name"
               value={name}
@@ -150,52 +181,50 @@ export default function TemplateEditorModal({ opened, templateId, onClose, onSav
               minRows={1}
             />
 
-            <Divider label="Sections" labelPosition="left" />
+            <Divider label="Sections" labelPosition="left" mt="sm" />
 
-            <ScrollArea.Autosize mah={420} type="auto" offsetScrollbars>
-              <Stack gap="sm">
-                {sections.map((s) => (
-                  <Paper key={s.key} withBorder p="sm" radius="md" bg="dark.7">
-                    <Group gap="xs" wrap="nowrap" mb="xs">
-                      <TextInput
-                        placeholder="Section name"
-                        value={s.name}
-                        onChange={(e) => setSection(s.key, { name: e.currentTarget.value })}
-                        style={{ flex: 1 }}
-                      />
-                      <ActionIcon
-                        variant="subtle"
-                        color="red"
-                        aria-label="Delete section"
-                        onClick={() => removeSection(s.key)}
-                      >
-                        <Trash2 size={16} />
-                      </ActionIcon>
-                    </Group>
-
-                    <LabelPicker
-                      label="Label slots (pull in matching modules)"
-                      value={s.labelIds}
-                      onChange={(ids) => setSection(s.key, { labelIds: ids })}
+            <Stack gap="md">
+              {sections.map((s) => (
+                <Paper key={s.key} withBorder p="md" radius="md" bg="dark.7">
+                  <Group gap="xs" wrap="nowrap" mb="sm">
+                    <TextInput
+                      placeholder="Section name"
+                      value={s.name}
+                      onChange={(e) => setSection(s.key, { name: e.currentTarget.value })}
+                      style={{ flex: 1 }}
                     />
+                    <ActionIcon
+                      variant="subtle"
+                      color="red"
+                      aria-label="Delete section"
+                      onClick={() => removeSection(s.key)}
+                    >
+                      <Trash2 size={16} />
+                    </ActionIcon>
+                  </Group>
 
-                    <Text size="xs" c="dark.2" mt="sm" mb={4}>
-                      Fixed tasks
-                    </Text>
-                    <BlueprintTasksEditor
-                      tasks={s.tasks}
-                      onChange={(tasks) => setSection(s.key, { tasks })}
-                    />
-                  </Paper>
-                ))}
+                  <LabelPicker
+                    label="Label slots (module-based: pull in matching modules)"
+                    value={s.labelIds}
+                    onChange={(ids) => setSection(s.key, { labelIds: ids })}
+                  />
 
-                {sections.length === 0 && (
-                  <Text size="sm" c="dark.2">
-                    No sections yet — add one below.
+                  <Text size="xs" c="dark.2" mt="md" mb={4}>
+                    Fixed tasks
                   </Text>
-                )}
-              </Stack>
-            </ScrollArea.Autosize>
+                  <BlueprintTasksEditor
+                    tasks={s.tasks}
+                    onChange={(tasks) => setSection(s.key, { tasks })}
+                  />
+                </Paper>
+              ))}
+
+              {sections.length === 0 && (
+                <Text size="sm" c="dark.2">
+                  No sections yet — add one below.
+                </Text>
+              )}
+            </Stack>
 
             <Button
               variant="light"
@@ -211,17 +240,19 @@ export default function TemplateEditorModal({ opened, templateId, onClose, onSav
                 {error}
               </Alert>
             )}
-            <Group justify="flex-end">
-              <Button type="button" variant="default" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button type="submit" loading={saving}>
-                Save template
-              </Button>
-            </Group>
           </Stack>
         </form>
       )}
-    </Modal>
+
+      <InstantiateTemplateModal
+        opened={instantiateId !== null}
+        templateId={instantiateId}
+        onClose={() => setInstantiateId(null)}
+        onInstantiated={(project) => {
+          setInstantiateId(null);
+          onInstantiated?.(project);
+        }}
+      />
+    </>
   );
 }

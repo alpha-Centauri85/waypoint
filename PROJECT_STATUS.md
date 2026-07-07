@@ -4,7 +4,7 @@
 > speed. Keep this current as the project evolves; see `ROADMAP.md` for the plan
 > and `CLAUDE.md` for full architecture + conventions.
 
-**Last updated:** 2026-07-07
+**Last updated:** 2026-07-08
 
 ## What it is
 
@@ -42,7 +42,7 @@ middleware guards protected routes via `req.session.userId`.
 - `PATCH /projects/:projectId/tasks/reorder` (body `{ orderedIds }`)
 - `GET/POST /projects/:projectId/sections`, `PATCH/DELETE .../sections/:id`, `PATCH .../sections/reorder`
 - `GET/POST /labels`, `PATCH/DELETE /labels/:id`
-- `GET/POST /templates`, `GET/PATCH/DELETE /templates/:id`, `POST /templates/from-project`, `POST /templates/:id/instantiate`
+- `GET/POST /templates`, `GET/PATCH/DELETE /templates/:id`, `POST /templates/from-project` (body `{ projectId, name }` to create or `{ projectId, templateId }` to overwrite), `POST /templates/:id/instantiate` (body `{ name, sectionLabels? }`)
 - `GET/POST /modules`, `POST /modules/bulk`, `GET/PATCH/DELETE /modules/:id`
 - `GET /search?q=` (projects + tasks, user-scoped)
 - `GET/POST /statuses`, `PATCH/DELETE /statuses/:id`, `PATCH /statuses/reorder`
@@ -103,6 +103,19 @@ is stored as a key and mapped to the user's workflow on instantiate. Editors
 transactionally. A one-time v1→v2 data migration runs on startup. Follow-ups:
 reorder sections/tasks in the editor, drag between sections.
 
+**Templates v3 — apply labels at project-creation:** templates and the module
+library are now **dedicated full pages** (header user menu → `TemplatesPage` /
+`ModulesPage`), each a list + a full-width inline editor (`TemplateEditor` /
+`ModuleEditor`) — no more cramped modal. A section reads as **standard** (fixed
+tasks) or **module-based** (label slots / no fixed tasks).
+Starting a project opens `InstantiateTemplateModal`: each module-based section
+gets an editable label picker (pre-filled from the template's slots) with a live
+preview of which modules will be injected; the choices are sent as `sectionLabels`
+overrides so labels can be applied **at creation time**, not just baked into the
+template. The editor can **Save & start a project**, and "Save as template" from a
+project offers **new or overwrite an existing** template (with a warning). See
+`docs/templates-v3/`.
+
 **Board (Kanban) view:** a List/Board toggle per project. The board shows status
 columns (To do / In progress / Done) with counts; compact cards (priority, due,
 labels, notes) open the edit modal on click; dragging a card between columns
@@ -155,9 +168,9 @@ Disabled under test; limits set by `AUTH_RATE_WINDOW_MS`/`AUTH_RATE_MAX`
 
 ## Verified
 
-ESLint clean; Prettier clean; 38 passing tests (Vitest — 24 server incl. full
+ESLint clean; Prettier clean; 77 passing tests (Vitest — 58 server incl. full
 register→project→task→subtask flow, cross-user isolation, error-handling,
-validation, security, null-clearing merge, and reorder/append; 14 client incl.
+validation, security, null-clearing merge, and reorder/append; 19 client incl.
 TaskEditModal open→edit→PATCH, `arrangeTasks` sort/filter, and a `moveTask`/DnD
 drop→reorder flow); client builds; live end-to-end runs against a real SQLite
 file confirmed auth/CRUD, editing, drag-reorder (persisted positions + append +

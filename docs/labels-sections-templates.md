@@ -113,6 +113,40 @@ Open decisions: injection **automatic** (all matching modules) vs
 **pick-at-instantiation** (choose optional modules per project); confirm injected
 tasks append after fixed ones.
 
+## Templates v3 — apply labels at project-creation (roadmap item 26)
+
+Refines v2 (see `docs/templates-v3/` for the flow diagram). Two changes:
+
+**Section kinds.** A template section is either **standard** (fixed tasks baked in,
+carried through as-is) or **module-based** (a placeholder filled by modules at
+creation). The client treats a section as module-based when it has label slots
+_or_ no fixed tasks — no schema change; a section can still be both.
+
+**Who applies the labels, and when — resolves the v2 open decision toward
+pick-at-instantiation.** The label→module wiring can live in _two_ places:
+
+- **On the template** (stored slots) — for a section that always needs the same
+  modules; still injected automatically.
+- **At project creation** (the new default) — the "Start a project from template"
+  dialog (`InstantiateTemplateModal`) shows each module-based section with an
+  editable label picker (pre-filled from the stored slots) and a live preview of
+  which library modules will be pulled in. The chosen labels are sent as
+  `sectionLabels: [{ sectionId, labelIds }]` and override the stored slots per
+  section; unlisted sections fall back to their slots.
+
+Server: `instantiateTemplate(userId, templateId, name, sectionLabels)` builds the
+effective label set per section (override else slots) before injecting
+`modulesForLabels`. Schema `instantiateSchema.sectionLabels` is optional, so the
+old auto-only behavior still works.
+
+**Entry points.** Templates and the module library are **dedicated full pages**
+(header user menu → `TemplatesPage` / `ModulesPage`, each a list + a full-width
+inline editor — the old cramped modals were retired). The editor can **Save &
+start a project** directly, and
+"Save as template" from a project offers **new** _or_ **overwrite an existing**
+template (`POST /templates/from-project` with an optional `templateId`; a warning
+precedes overwrite since it replaces the whole structure and clears label slots).
+
 ## Module library (roadmap item 24)
 
 Shipped templates treat modules as **template-private** (save-as-template and the

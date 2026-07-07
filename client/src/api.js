@@ -67,10 +67,17 @@ export const getTemplate = (id) => request(`/api/templates/${id}`);
 export const createTemplate = (body) => request('/api/templates', { method: 'POST', body });
 export const updateTemplate = (id, body) =>
   request(`/api/templates/${id}`, { method: 'PATCH', body });
+// Save a project as a new template (name) or overwrite an existing one (templateId).
 export const createTemplateFromProject = (projectId, name) =>
   request('/api/templates/from-project', { method: 'POST', body: { projectId, name } });
-export const instantiateTemplate = (id, name) =>
-  request(`/api/templates/${id}/instantiate`, { method: 'POST', body: { name } });
+export const overwriteTemplateFromProject = (projectId, templateId) =>
+  request('/api/templates/from-project', { method: 'POST', body: { projectId, templateId } });
+// sectionLabels: [{ sectionId, labelIds }] chosen at creation time (optional).
+export const instantiateTemplate = (id, name, sectionLabels) =>
+  request(`/api/templates/${id}/instantiate`, {
+    method: 'POST',
+    body: { name, ...(sectionLabels ? { sectionLabels } : {}) },
+  });
 export const deleteTemplate = (id) => request(`/api/templates/${id}`, { method: 'DELETE' });
 
 // Sections (task groupings within a project)
