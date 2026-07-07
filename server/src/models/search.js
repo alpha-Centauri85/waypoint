@@ -10,7 +10,7 @@ const searchProjects = db.prepare(`
 `);
 
 const searchTasks = db.prepare(`
-  SELECT t.id, t.title, t.status, t.due_date, t.priority, t.project_id, p.name AS project_name
+  SELECT t.id, t.title, t.status_id, t.due_date, t.priority, t.project_id, p.name AS project_name
   FROM tasks t
   JOIN projects p ON p.id = t.project_id
   WHERE p.user_id = ? AND (t.title LIKE ? ESCAPE '\\' OR IFNULL(t.notes, '') LIKE ? ESCAPE '\\')

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { createUser, getUserByEmail, getUserById } from '../models/users.js';
+import { ensureStatuses } from '../models/statuses.js';
 import { conflict, unauthorized } from '../lib/errors.js';
 import { validateBody } from '../lib/validate.js';
 import { authLimiter } from '../middleware/rateLimit.js';
@@ -42,6 +43,9 @@ router.post('/logout', (req, res) => {
 router.get('/me', (req, res) => {
   const user = req.session?.userId ? getUserById(req.session.userId) : null;
   if (!user) throw unauthorized('Not authenticated');
+  // Seed default statuses + backfill legacy task statuses before the app loads,
+  // so task fetches always have a status_id (no first-render race).
+  ensureStatuses(user.id);
   res.json(publicUser(user));
 });
 

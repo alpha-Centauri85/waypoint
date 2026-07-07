@@ -14,11 +14,19 @@ import {
 } from '../models/tasks.js';
 import { setTaskLabels } from '../models/labels.js';
 import { sectionBelongsToProject } from '../models/sections.js';
+import { defaultStatusId, statusBelongsToUser } from '../models/statuses.js';
 
 // A task's sectionId must be null (ungrouped) or a section in the same project.
 function assertSectionInProject(sectionId, projectId) {
   if (sectionId != null && !sectionBelongsToProject(sectionId, projectId)) {
     throw badRequest('sectionId does not belong to this project');
+  }
+}
+
+// A task's statusId must be one of the user's statuses.
+function assertStatusOwned(statusId, userId) {
+  if (statusId != null && !statusBelongsToUser(statusId, userId)) {
+    throw badRequest('statusId does not belong to you');
   }
 }
 
@@ -39,9 +47,17 @@ router.get('/', (req, res) => {
 });
 
 router.post('/', validateBody(createTaskSchema), (req, res) => {
-  const { title, status, dueDate, notes, priority, labelIds, sectionId } = req.body;
+  const { title, statusId, dueDate, notes, priority, labelIds, sectionId } = req.body;
   assertSectionInProject(sectionId, req.project.id);
-  const task = createTask(req.project.id, { title, status, dueDate, notes, priority, sectionId });
+  assertStatusOwned(statusId, req.session.userId);
+  const task = createTask(req.project.id, {
+    title,
+    statusId: statusId ?? defaultStatusId(req.session.userId),
+    dueDate,
+    notes,
+    priority,
+    sectionId,
+  });
   if (labelIds) setTaskLabels(task.id, req.session.userId, labelIds);
   res.status(201).json(getTask(task.id, req.project.id));
 });
@@ -61,6 +77,7 @@ router.get('/:taskId', (req, res) => {
 
 router.patch('/:taskId', validateBody(updateTaskSchema), (req, res) => {
   if ('sectionId' in req.body) assertSectionInProject(req.body.sectionId, req.project.id);
+  if ('statusId' in req.body) assertStatusOwned(req.body.statusId, req.session.userId);
   const task = updateTask(Number(req.params.taskId), req.project.id, req.body);
   if (!task) throw notFound('Task not found');
   if ('labelIds' in req.body) setTaskLabels(task.id, req.session.userId, req.body.labelIds);

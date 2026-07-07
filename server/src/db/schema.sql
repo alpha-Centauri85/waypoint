@@ -17,6 +17,20 @@ CREATE TABLE IF NOT EXISTS projects (
 );
 CREATE INDEX IF NOT EXISTS idx_projects_user ON projects(user_id);
 
+-- Per-user workflow statuses (custom states). Seeded with To do / In progress /
+-- Done on first use; `is_done` drives progress + overdue. `key` is set only on
+-- the seeded defaults so legacy tasks.status text can be backfilled to status_id.
+CREATE TABLE IF NOT EXISTS statuses (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name     TEXT NOT NULL,
+  color    TEXT NOT NULL DEFAULT 'gray',
+  position INTEGER NOT NULL DEFAULT 0,
+  is_done  INTEGER NOT NULL DEFAULT 0,
+  key      TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_statuses_user ON statuses(user_id);
+
 -- Named groupings of tasks within a project ("sections"). Defined before tasks
 -- so tasks can reference it. See docs/labels-sections-templates.md.
 CREATE TABLE IF NOT EXISTS sections (

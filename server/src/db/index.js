@@ -34,5 +34,9 @@ ensureColumn('tasks', 'priority', 'INTEGER NOT NULL DEFAULT 0');
 // section_id is added after `sections` is created by the schema above, so the
 // referenced table exists when the column is added to an older tasks table.
 ensureColumn('tasks', 'section_id', 'INTEGER REFERENCES sections(id) ON DELETE SET NULL');
-// Index created here (not in schema.sql) so it runs after the column exists.
+// Custom-status FK. Backfilled from the legacy `status` text by models/statuses.js
+// when a user's default statuses are seeded.
+ensureColumn('tasks', 'status_id', 'INTEGER REFERENCES statuses(id)');
+// Indexes created here (not in schema.sql) so they run after the columns exist.
 db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_section ON tasks(section_id)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status_id)');

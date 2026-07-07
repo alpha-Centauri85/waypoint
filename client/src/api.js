@@ -41,6 +41,14 @@ export const updateLabel = (id, fields) =>
   request(`/api/labels/${id}`, { method: 'PATCH', body: fields });
 export const deleteLabel = (id) => request(`/api/labels/${id}`, { method: 'DELETE' });
 
+// Statuses (per-user workflow states)
+export const listStatuses = () => request('/api/statuses');
+export const createStatus = (body) => request('/api/statuses', { method: 'POST', body });
+export const updateStatus = (id, body) => request(`/api/statuses/${id}`, { method: 'PATCH', body });
+export const deleteStatus = (id) => request(`/api/statuses/${id}`, { method: 'DELETE' });
+export const reorderStatuses = (orderedIds) =>
+  request('/api/statuses/reorder', { method: 'PATCH', body: { orderedIds } });
+
 // Search (projects + tasks, scoped to the user)
 export const search = (q) => request(`/api/search?q=${encodeURIComponent(q)}`);
 

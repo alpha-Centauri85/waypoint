@@ -33,11 +33,15 @@ test('full flow: register → project → task → subtask', async () => {
   const project = await agent.post('/api/projects').send({ name: 'Launch site' });
   expect(project.status).toBe(201);
 
+  // Seeded workflow statuses; pick "In progress".
+  const statuses = (await agent.get('/api/statuses')).body;
+  const doing = statuses.find((s) => s.key === 'doing');
+
   const task = await agent
     .post(`/api/projects/${project.body.id}/tasks`)
-    .send({ title: 'Design homepage', status: 'doing' });
+    .send({ title: 'Design homepage', statusId: doing.id });
   expect(task.status).toBe(201);
-  expect(task.body.status).toBe('doing');
+  expect(task.body.status_id).toBe(doing.id);
 
   const subtask = await agent
     .post(`/api/tasks/${task.body.id}/subtasks`)
@@ -96,7 +100,8 @@ test('project list includes task_count and done_count rollups', async () => {
   await agent.post('/api/auth/register').send({ email: 'roll@x.com', password: 'password123' });
   const project = await agent.post('/api/projects').send({ name: 'Rollup' });
   const pid = project.body.id;
-  await agent.post(`/api/projects/${pid}/tasks`).send({ title: 'one', status: 'done' });
+  const done = (await agent.get('/api/statuses')).body.find((s) => s.is_done);
+  await agent.post(`/api/projects/${pid}/tasks`).send({ title: 'one', statusId: done.id });
   await agent.post(`/api/projects/${pid}/tasks`).send({ title: 'two' });
 
   const list = await agent.get('/api/projects');

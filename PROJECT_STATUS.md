@@ -44,6 +44,7 @@ middleware guards protected routes via `req.session.userId`.
 - `GET/POST /labels`, `PATCH/DELETE /labels/:id`
 - `GET /templates`, `GET/DELETE /templates/:id`, `POST /templates/from-project`, `POST /templates/:id/instantiate`
 - `GET /search?q=` (projects + tasks, user-scoped)
+- `GET/POST /statuses`, `PATCH/DELETE /statuses/:id`, `PATCH /statuses/reorder`
 - `GET/POST /tasks/:taskId/subtasks`, `PATCH/DELETE /tasks/:taskId/subtasks/:subtaskId`
 
 ## Frontend
@@ -107,6 +108,15 @@ changes its status (`TaskBoard.jsx`). Follow-up: section swimlanes.
 (name/description) and tasks (title/notes), user-scoped with LIKE wildcards
 escaped (`GET /api/search`); the dropdown groups projects + tasks and selecting a
 result opens the owning project.
+
+**Custom statuses + Settings:** statuses are **per-user, user-defined** workflow
+states (`statuses` table + `tasks.status_id`), seeded lazily (To do / In progress
+/ Done) and backfilled from legacy status text by key. A `StatusesProvider`
+context feeds board columns, the status filter/sort, the cycle badge, the edit
+select, search, and progress/overdue (via each status's `is_done`). Managed in a
+new **Settings screen** (`SettingsScreen`, from the header menu) alongside global
+label management. Migrates to per-account when sharing lands. Templates keep the
+default status keys (mapped on instantiate) until templates v2.
 
 ## Error handling
 

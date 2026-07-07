@@ -2,6 +2,7 @@ import { db } from '../db/index.js';
 import { createProject, getProject } from './projects.js';
 import { createSection, listSections } from './sections.js';
 import { createTask, listTasks } from './tasks.js';
+import { listStatuses, statusIdForKey } from './statuses.js';
 
 // Templates are reusable project blueprints. A template owns an ordered set of
 // modules (reusable "section blueprints"); each module owns ordered task
@@ -128,9 +129,13 @@ export const createTemplateFromProject = db.transaction((userId, projectId, name
 
   const sections = listSections(projectId);
   const allTasks = listTasks(projectId);
+  // Blueprints store status as a legacy key (todo/doing/done). Map each task's
+  // custom status back to a key; custom statuses without one fall back to 'todo'
+  // (templates keep the default keys until templates v2).
+  const keyByStatusId = new Map(listStatuses(userId).map((s) => [s.id, s.key]));
   const asBlueprint = (t) => ({
     title: t.title,
-    status: t.status,
+    status: keyByStatusId.get(t.status_id) ?? 'todo',
     priority: t.priority,
     notes: t.notes,
   });
@@ -157,7 +162,9 @@ export const instantiateTemplate = db.transaction((userId, templateId, name) => 
     for (const t of module.tasks) {
       createTask(project.id, {
         title: t.title,
-        status: t.status,
+        // Blueprint statuses are stored as legacy keys (todo/doing/done); map to
+        // the user's matching status (falls back to their first).
+        statusId: statusIdForKey(userId, t.status),
         priority: t.priority,
         notes: t.notes,
         sectionId: section.id,
