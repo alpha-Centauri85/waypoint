@@ -123,3 +123,12 @@ export const updateSubtask = (taskId, subtaskId, fields) =>
   request(`/api/tasks/${taskId}/subtasks/${subtaskId}`, { method: 'PATCH', body: fields });
 export const deleteSubtask = (taskId, subtaskId) =>
   request(`/api/tasks/${taskId}/subtasks/${subtaskId}`, { method: 'DELETE' });
+
+// Comments (a thread on a task)
+export const listComments = (taskId) => request(`/api/tasks/${taskId}/comments`);
+export const createComment = (taskId, body) =>
+  request(`/api/tasks/${taskId}/comments`, { method: 'POST', body: { body } });
+export const updateComment = (taskId, commentId, body) =>
+  request(`/api/tasks/${taskId}/comments/${commentId}`, { method: 'PATCH', body: { body } });
+export const deleteComment = (taskId, commentId) =>
+  request(`/api/tasks/${taskId}/comments/${commentId}`, { method: 'DELETE' });

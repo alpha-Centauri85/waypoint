@@ -46,6 +46,7 @@ middleware guards protected routes via `req.session.userId`.
 - `GET/POST /modules`, `POST /modules/bulk`, `GET/PATCH/DELETE /modules/:id`
 - `GET /search?q=` (projects + tasks, user-scoped)
 - `GET /activities?projectId=&taskId=&limit=` (activity log, user-scoped, most-recent-first)
+- `GET/POST /tasks/:taskId/comments`, `PATCH/DELETE /tasks/:taskId/comments/:id` (author-scoped edit/delete)
 - `GET/POST /statuses`, `PATCH/DELETE /statuses/:id`, `PATCH /statuses/reorder`
 - `GET/POST /tasks/:taskId/subtasks`, `PATCH/DELETE /tasks/:taskId/subtasks/:subtaskId`
 
@@ -130,8 +131,14 @@ rename, priority, due, notes, section, folded into one summary) and task deleted
 summaries are composed at write time and stored verbatim (an audit trail, not a
 live view). `GET /api/activities?projectId=&taskId=&limit=` (`listActivities`).
 The client shows a per-project timeline in an `ActivityDrawer` (project actions
-menu → **Activity**): icon per action + relative time. User-authored comments are
-the planned follow-up (roadmap 18).
+menu → **Activity**): icon per action + relative time.
+
+**Comments:** each task has a comment thread (`comments` table, cascades with the
+task; `user_id` author + `updated_at` on edit; responses embed `author_email` for
+multi-user later). Nested CRUD at `/api/tasks/:taskId/comments` with author-scoped
+edit/delete; adding a comment also logs a `comment.added` activity. The client
+renders a `Comments` section at the bottom of `TaskEditModal` (add, inline edit,
+delete; Cmd/Ctrl+Enter posts).
 
 **Search:** a debounced global search (`SearchBar`, dashboard) over projects
 (name/description) and tasks (title/notes), user-scoped with LIKE wildcards
@@ -180,7 +187,7 @@ Disabled under test; limits set by `AUTH_RATE_WINDOW_MS`/`AUTH_RATE_MAX`
 
 ## Verified
 
-ESLint clean; Prettier clean; 80 passing tests (Vitest — 61 server incl. full
+ESLint clean; Prettier clean; 84 passing tests (Vitest — 65 server incl. full
 register→project→task→subtask flow, cross-user isolation, error-handling,
 validation, security, null-clearing merge, and reorder/append; 19 client incl.
 TaskEditModal open→edit→PATCH, `arrangeTasks` sort/filter, and a `moveTask`/DnD

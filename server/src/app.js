@@ -19,6 +19,7 @@ import tasksRouter from './routes/tasks.js';
 import templatesRouter from './routes/templates.js';
 import subtasksRouter from './routes/subtasks.js';
 import activitiesRouter from './routes/activities.js';
+import commentsRouter from './routes/comments.js';
 
 const SqliteStore = SqliteStoreFactory(session);
 
@@ -92,6 +93,7 @@ export function createApp() {
   app.use('/api/projects/:projectId/sections', sectionsRouter);
   app.use('/api/projects/:projectId/tasks', tasksRouter);
   app.use('/api/tasks/:taskId/subtasks', subtasksRouter);
+  app.use('/api/tasks/:taskId/comments', commentsRouter);
 
   // 404 for unknown API routes (before the SPA fallback so /api/* never returns
   // index.html).

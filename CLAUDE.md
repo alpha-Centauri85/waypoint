@@ -101,7 +101,12 @@ context); logging swallows its own errors so it can never break the mutation.
 (`listActivities`, always user-scoped); the client renders a per-project
 `ActivityDrawer`. When you add a new mutation worth surfacing, add a
 `logActivity` call in its route handler — don't log from models (they stay pure
-DB). Foreign keys are enforced per-connection
+DB). **Comments** are a per-task thread (`comments` table, cascades with the task;
+`user_id` author + `updated_at`), a nested router at
+`/api/tasks/:taskId/comments` (guarded by `getTaskForUser` like subtasks;
+edit/delete are author-scoped by `user_id`); adding one also logs a
+`comment.added` activity. The client renders them in `TaskEditModal` via
+`Comments.jsx`. Foreign keys are enforced per-connection
 via `PRAGMA foreign_keys = ON` in `server/src/db/index.js`. **Ownership is
 enforced in every query**: project reads/writes are scoped by `user_id`, task
 queries by `project_id`, and subtask authorization joins task→project→user

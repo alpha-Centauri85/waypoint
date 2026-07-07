@@ -1,5 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Group, Modal, Select, Stack, Textarea, TextInput } from '@mantine/core';
+import {
+  Alert,
+  Button,
+  Divider,
+  Group,
+  Modal,
+  Select,
+  Stack,
+  Textarea,
+  TextInput,
+} from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { notifications } from '@mantine/notifications';
 import dayjs from 'dayjs';
@@ -7,6 +17,7 @@ import { updateTask } from '../api.js';
 import { PRIORITY_OPTIONS } from '../priority.js';
 import { useStatuses } from '../statuses.jsx';
 import LabelPicker from './LabelPicker.jsx';
+import Comments from './Comments.jsx';
 
 // Modal for editing a task's fields. `task` is the row being edited (or null when
 // closed); on save it PATCHes and calls onSaved.
@@ -66,7 +77,7 @@ export default function TaskEditModal({ project, task, sections = [], opened, on
   }
 
   return (
-    <Modal opened={opened} onClose={onClose} title="Edit task" centered>
+    <Modal opened={opened} onClose={onClose} title="Edit task" size="lg" centered>
       <form onSubmit={handleSave}>
         <Stack>
           <TextInput
@@ -134,6 +145,13 @@ export default function TaskEditModal({ project, task, sections = [], opened, on
           </Group>
         </Stack>
       </form>
+
+      {task?.id && (
+        <>
+          <Divider my="md" />
+          <Comments taskId={task.id} />
+        </>
+      )}
     </Modal>
   );
 }
