@@ -4,7 +4,7 @@
 > speed. Keep this current as the project evolves; see `ROADMAP.md` for the plan
 > and `CLAUDE.md` for full architecture + conventions.
 
-**Last updated:** 2026-07-06
+**Last updated:** 2026-07-07
 
 ## What it is
 
@@ -42,7 +42,8 @@ middleware guards protected routes via `req.session.userId`.
 - `PATCH /projects/:projectId/tasks/reorder` (body `{ orderedIds }`)
 - `GET/POST /projects/:projectId/sections`, `PATCH/DELETE .../sections/:id`, `PATCH .../sections/reorder`
 - `GET/POST /labels`, `PATCH/DELETE /labels/:id`
-- `GET /templates`, `GET/DELETE /templates/:id`, `POST /templates/from-project`, `POST /templates/:id/instantiate`
+- `GET/POST /templates`, `GET/PATCH/DELETE /templates/:id`, `POST /templates/from-project`, `POST /templates/:id/instantiate`
+- `GET/POST /modules`, `POST /modules/bulk`, `GET/PATCH/DELETE /modules/:id`
 - `GET /search?q=` (projects + tasks, user-scoped)
 - `GET/POST /statuses`, `PATCH/DELETE /statuses/:id`, `PATCH /statuses/reorder`
 - `GET/POST /tasks/:taskId/subtasks`, `PATCH/DELETE /tasks/:taskId/subtasks/:subtaskId`
@@ -87,17 +88,20 @@ Section select. Full drag-and-drop: reorder within a section, drag tasks across
 sections, and drag section headers to reorder — all persisted/optimistic. This is
 the structural base for modules/templates (see `docs/labels-sections-templates.md`).
 
-**Templates & modules (MVP):** reusable project blueprints — model is
-`templates` → `template_modules` → `modules` → `module_tasks`. **Save a project
-as a template** (each section → a module; ungrouped tasks → a "General" module),
-and **start a new project from a template** (instantiates a section per module
-with tasks copied in, fields preserved). API under `/api/templates`; UI is "Save
-as template" (project actions menu) + a "Start from a template" picker in the
-sidebar. Templates can also be **created from scratch and edited** in a full editor
-(`TemplateEditorModal`: name/description + add/rename/delete modules and their
-tasks with status/priority), saved as one full-structure PATCH the server
-rebuilds transactionally. Follow-ups: reorder in the editor, reuse a module
-across templates, and carry labels/due-dates into blueprints.
+**Templates v2 + module library:** a template is a real project blueprint —
+`templates` → `template_sections` → `template_tasks` → `template_subtasks`, plus
+per-section label "slots" (`template_section_labels`). **Modules** are a separate
+reusable library (`modules` → `module_tasks` → `module_subtasks` + `module_labels`),
+managed from the header menu → **Module library**: bulk-create (one name per line),
+edit, delete, assign labels, edit tasks/subtasks. **Save a project as a template**
+captures its sections + tasks + subtasks (ungrouped → "General"). **Instantiate**
+builds the fixed skeleton, then **injects** the tasks of every library module whose
+labels match a section's slots (appended after fixed tasks). Blueprint task status
+is stored as a key and mapped to the user's workflow on instantiate. Editors
+(`TemplateEditorModal` = sections + label slots; `ModuleEditorModal`) share a
+`BlueprintTasksEditor`; saves are one full-structure POST/PATCH the server rebuilds
+transactionally. A one-time v1→v2 data migration runs on startup. Follow-ups:
+reorder sections/tasks in the editor, drag between sections.
 
 **Board (Kanban) view:** a List/Board toggle per project. The board shows status
 columns (To do / In progress / Done) with counts; compact cards (priority, due,
@@ -115,8 +119,8 @@ states (`statuses` table + `tasks.status_id`), seeded lazily (To do / In progres
 context feeds board columns, the status filter/sort, the row status picker, the edit
 select, search, and progress/overdue (via each status's `is_done`). Managed in a
 new **Settings screen** (`SettingsScreen`, from the header menu) alongside global
-label management. Migrates to per-account when sharing lands. Templates keep the
-default status keys (mapped on instantiate) until templates v2.
+label management. Migrates to per-account when sharing lands. Templates/modules
+store blueprint status as a key and map it to the user's workflow on instantiate.
 
 ## Error handling
 

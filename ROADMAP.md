@@ -132,29 +132,28 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
       Houses **workflow statuses** (23) and **global label management**
       (list/add/rename/recolor/delete in one place). App view is a simple
       `view` state in `App.jsx` (no router needed yet).
-- [ ] **24. Module library + Templates workspace** (L) — promote modules from
-      template-private copies to a **reusable library** with its own section
-      (its own screen, sibling to Settings). Manage modules independently:
-      **bulk-create** (enter several names at once), edit, delete, and **assign
-      labels** (shared label pool → a new `module_labels` join; scope lives in the
-      association, per `docs/labels-sections-templates.md`) so the library is
-      searchable/filterable. Templates then **compose from the library** — link
-      modules + order them (`template_modules` already supports this) — plus
-      one-off modules. **Key change:** the editor moves from full-replace saving to
-      **link/unlink**, since a shared module edited once must update every template
-      that references it (that reach is the point, but decide it explicitly:
-      shared library vs template-private copies). Depends on / extends 21;
-      pairs with the Settings screen (22).
-- [ ] **25. Templates v2 — fixed sections/tasks/subtasks + label-injected
-      modules** (L) — a template becomes a real project blueprint with two kinds
+- [x] **24. Module library** (L) — modules are now a **reusable, per-user
+      library** with its own place in the UI (header menu → **Module library**),
+      independent of any template. Manage them directly: **bulk-create** (one name
+      per line), edit, delete, **assign labels** (shared label pool via a
+      `module_labels` join), and edit each module's tasks + subtasks. A module is
+      no longer a template-private copy — it's a standalone bundle that templates
+      pull in by matching labels (see 25). `modules` + `module_labels` +
+      `module_tasks` + `module_subtasks`; the old `template_modules` join was
+      migrated away.
+- [x] **25. Templates v2 — fixed sections/tasks/subtasks + label-injected
+      modules** (L) — a template is now a real project blueprint with two kinds
       of content: a **fixed skeleton** (ordered sections → fixed tasks → subtasks,
-      always created) and **modular injection** (a section flagged with labels
-      pulls in, at instantiation, the tasks of every library module carrying a
-      matching label — appended after the fixed tasks). Supersedes the v1
-      "module = section, no subtasks" structure. New tables for template
-      sections/tasks/subtasks + section-label slots; modules gain subtasks +
-      labels. Depends on the module library (24). Editor grows sections + subtasks + a per-section label picker. Full model + schema sketch + open decisions
-      (auto-inject vs pick-at-instantiation) in `docs/labels-sections-templates.md`.
+      always created) and **modular injection** (a section flagged with label
+      "slots" pulls in, at instantiation, the tasks of every library module
+      carrying a matching label — appended after the fixed tasks). Supersedes the
+      v1 "module = section, no subtasks" structure. Tables: `template_sections` →
+      `template_tasks` → `template_subtasks` + `template_section_labels`; statuses
+      stored as keys and mapped to the user's workflow on instantiate. Editor
+      rewritten: sections with a per-section label picker + a shared
+      BlueprintTasksEditor (tasks + one-per-line subtasks). One-time v1→v2 data
+      migration on startup. Model + decisions in
+      `docs/labels-sections-templates.md`.
 - [x] **23. Custom statuses (workflow states)** (L) — per-user, user-defined
       states replace the hardcoded todo/doing/done. `statuses` table (name, color,
       `position`, `is_done`, plus `key` for the seeded defaults) + `tasks.status_id`
