@@ -77,3 +77,15 @@ useful on their own and are the runtime form a module instantiates into.
 - Do sections need their own labels, or is project+task enough?
 - Can a module be shared across users/workspaces (when sharing lands)?
 - Instantiation: copy-once (snapshot) vs. keep a live link to the template?
+
+## Module library (roadmap item 24)
+
+Shipped templates treat modules as **template-private** (save-as-template and the
+editor create fresh modules per template; the editor saves via full-replace). A
+follow-up promotes modules to a **reusable library**: manage them independently,
+bulk-create, and **label them** (shared pool → a `module_labels` join, scope in
+the association per D1). Templates then compose by linking library modules
+(`template_modules`) rather than owning copies. Decision to make first: **shared
+modules** (edit once → propagates to every template using it) vs keeping
+**template-private copies**. Shared is the intent behind labeling/organizing a
+library; it changes the editor from full-replace to link/unlink.
