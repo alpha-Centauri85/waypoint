@@ -135,7 +135,17 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
       template" from a project now offers **new or overwrite** an existing template
       (`/templates/from-project` optional `templateId`, warning before overwrite).
       Covered by `server/test/templates.test.js`. See `docs/templates-v3/`.
-- [ ] **18. Comments / activity log**
+- [~] **18. Comments / activity log** — **activity log shipped**; comments still
+  to do. An append-only `activities` table (user-scoped; `project_id` cascades,
+  `task_id` nulls on delete so "deleted task X" survives). `logActivity` /
+  `listActivities` (`models/activities.js`) are called from the project + task
+  routes to record created/renamed, task created, task updated (status→name,
+  rename, priority, due, notes, section — one combined summary) and task
+  deleted; summaries are built at write time and stored verbatim.
+  `GET /api/activities?projectId=&taskId=&limit=`. Client: an `ActivityDrawer`
+  (project actions menu → **Activity**) shows a per-project timeline (icon per
+  action, relative time). Covered by `server/test/activities.test.js`.
+  _Next:_ user-authored comments on tasks (+ task-level history in the edit modal).
 - [ ] **19. Project sharing (multi-user collaboration)**
 - [ ] **20. Due-date notifications / reminders**
 - [x] **22. Settings / configuration screen** (M) — a dedicated Settings screen

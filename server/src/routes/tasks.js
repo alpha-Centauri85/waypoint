@@ -14,7 +14,38 @@ import {
 } from '../models/tasks.js';
 import { setTaskLabels } from '../models/labels.js';
 import { sectionBelongsToProject } from '../models/sections.js';
-import { defaultStatusId, statusBelongsToUser } from '../models/statuses.js';
+import { defaultStatusId, getStatus, statusBelongsToUser } from '../models/statuses.js';
+import { logActivity } from '../models/activities.js';
+
+const PRIORITY_LABELS = ['none', 'low', 'medium', 'high', 'urgent'];
+
+// Build a human summary of what a task PATCH changed. Returns { action, summary }
+// or null when nothing notable changed. A status change wins the action/icon; the
+// rest fold into a combined phrase so one save is one log line.
+function summarizeTaskUpdate(before, after, body, userId) {
+  const phrases = [];
+  let statusChanged = false;
+  if ('statusId' in body && after.status_id !== before.status_id) {
+    statusChanged = true;
+    const status = getStatus(after.status_id, userId);
+    phrases.push(`status → ${status?.name ?? 'unknown'}`);
+  }
+  if ('title' in body && after.title !== before.title) phrases.push(`renamed to “${after.title}”`);
+  if ('priority' in body && after.priority !== before.priority)
+    phrases.push(`priority → ${PRIORITY_LABELS[after.priority] ?? after.priority}`);
+  if ('dueDate' in body && (after.due_date ?? null) !== (before.due_date ?? null))
+    phrases.push(after.due_date ? `due ${after.due_date}` : 'due date cleared');
+  if ('sectionId' in body && (after.section_id ?? null) !== (before.section_id ?? null))
+    phrases.push('moved section');
+  if ('notes' in body && (after.notes ?? null) !== (before.notes ?? null))
+    phrases.push('notes updated');
+
+  if (!phrases.length) return null;
+  return {
+    action: statusChanged ? 'task.status_changed' : 'task.updated',
+    summary: `“${after.title}”: ${phrases.join(', ')}`,
+  };
+}
 
 // A task's sectionId must be null (ungrouped) or a section in the same project.
 function assertSectionInProject(sectionId, projectId) {
@@ -59,6 +90,12 @@ router.post('/', validateBody(createTaskSchema), (req, res) => {
     sectionId,
   });
   if (labelIds) setTaskLabels(task.id, req.session.userId, labelIds);
+  logActivity(req.session.userId, {
+    projectId: req.project.id,
+    taskId: task.id,
+    action: 'task.created',
+    summary: `Added task “${task.title}”`,
+  });
   res.status(201).json(getTask(task.id, req.project.id));
 });
 
@@ -78,15 +115,26 @@ router.get('/:taskId', (req, res) => {
 router.patch('/:taskId', validateBody(updateTaskSchema), (req, res) => {
   if ('sectionId' in req.body) assertSectionInProject(req.body.sectionId, req.project.id);
   if ('statusId' in req.body) assertStatusOwned(req.body.statusId, req.session.userId);
+  const before = getTask(Number(req.params.taskId), req.project.id);
   const task = updateTask(Number(req.params.taskId), req.project.id, req.body);
   if (!task) throw notFound('Task not found');
   if ('labelIds' in req.body) setTaskLabels(task.id, req.session.userId, req.body.labelIds);
+  const entry = summarizeTaskUpdate(before, task, req.body, req.session.userId);
+  if (entry)
+    logActivity(req.session.userId, { projectId: req.project.id, taskId: task.id, ...entry });
   res.json(getTask(task.id, req.project.id));
 });
 
 router.delete('/:taskId', (req, res) => {
+  const before = getTask(Number(req.params.taskId), req.project.id);
   const ok = deleteTask(Number(req.params.taskId), req.project.id);
   if (!ok) throw notFound('Task not found');
+  logActivity(req.session.userId, {
+    projectId: req.project.id,
+    taskId: null, // the row is gone; the summary keeps the title
+    action: 'task.deleted',
+    summary: `Deleted task “${before.title}”`,
+  });
   res.status(204).end();
 });
 

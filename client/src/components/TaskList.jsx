@@ -23,6 +23,7 @@ import {
   Check,
   EllipsisVertical,
   GripVertical,
+  History,
   LayoutTemplate,
   Pencil,
   Plus,
@@ -50,6 +51,7 @@ import TaskBoard from './TaskBoard.jsx';
 import TaskEditModal from './TaskEditModal.jsx';
 import LabelManagerModal from './LabelManagerModal.jsx';
 import SaveAsTemplateModal from './SaveAsTemplateModal.jsx';
+import ActivityDrawer from './ActivityDrawer.jsx';
 
 const labelSwatch = (c) => `var(--mantine-color-${c}-6)`;
 
@@ -123,6 +125,7 @@ export default function TaskList({ project, onTasksChanged }) {
   const [sortBy, setSortBy] = useState('default');
   const [view, setView] = useState('list'); // 'list' | 'board'
   const [manageLabelsOpen, setManageLabelsOpen] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const [draggedSectionId, setDraggedSectionId] = useState(null);
@@ -442,6 +445,9 @@ export default function TaskList({ project, onTasksChanged }) {
               <Menu.Item leftSection={<Tags size={15} />} onClick={() => setManageLabelsOpen(true)}>
                 Manage labels
               </Menu.Item>
+              <Menu.Item leftSection={<History size={15} />} onClick={() => setActivityOpen(true)}>
+                Activity
+              </Menu.Item>
             </Menu.Dropdown>
           </Menu>
         </Group>
@@ -710,6 +716,13 @@ export default function TaskList({ project, onTasksChanged }) {
         opened={manageLabelsOpen}
         onClose={() => setManageLabelsOpen(false)}
         onChanged={refreshAll}
+      />
+
+      <ActivityDrawer
+        opened={activityOpen}
+        projectId={project.id}
+        projectName={project.name}
+        onClose={() => setActivityOpen(false)}
       />
     </Stack>
   );

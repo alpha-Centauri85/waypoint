@@ -189,3 +189,20 @@ CREATE TABLE IF NOT EXISTS subtasks (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_subtasks_task ON subtasks(task_id);
+
+-- Activity log: an append-only trail of what happened in a project (task/project
+-- created, status changed, etc.). Summaries are built at write time and stored
+-- verbatim (an audit record, not a live view). project_id cascades (the trail
+-- dies with its project); task_id is nulled if the task is later deleted so the
+-- "deleted task X" record survives. See docs and routes/{projects,tasks}.js.
+CREATE TABLE IF NOT EXISTS activities (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+  task_id    INTEGER REFERENCES tasks(id) ON DELETE SET NULL,
+  action     TEXT NOT NULL,
+  summary    TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_activities_project ON activities(project_id, id);
+CREATE INDEX IF NOT EXISTS idx_activities_user ON activities(user_id, id);

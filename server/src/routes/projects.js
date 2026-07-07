@@ -11,6 +11,7 @@ import {
   updateProject,
 } from '../models/projects.js';
 import { setProjectLabels } from '../models/labels.js';
+import { logActivity } from '../models/activities.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -23,6 +24,11 @@ router.post('/', validateBody(createProjectSchema), (req, res) => {
   const { name, description, labelIds } = req.body;
   const project = createProject(req.session.userId, { name, description });
   if (labelIds) setProjectLabels(project.id, req.session.userId, labelIds);
+  logActivity(req.session.userId, {
+    projectId: project.id,
+    action: 'project.created',
+    summary: `Created project “${project.name}”`,
+  });
   res.status(201).json(getProject(project.id, req.session.userId));
 });
 
@@ -33,9 +39,16 @@ router.get('/:id', (req, res) => {
 });
 
 router.patch('/:id', validateBody(updateProjectSchema), (req, res) => {
+  const before = getProject(Number(req.params.id), req.session.userId);
   const project = updateProject(Number(req.params.id), req.session.userId, req.body);
   if (!project) throw notFound('Project not found');
   if ('labelIds' in req.body) setProjectLabels(project.id, req.session.userId, req.body.labelIds);
+  const renamed = before && project.name !== before.name;
+  logActivity(req.session.userId, {
+    projectId: project.id,
+    action: renamed ? 'project.renamed' : 'project.updated',
+    summary: renamed ? `Renamed project to “${project.name}”` : `Updated project “${project.name}”`,
+  });
   res.json(getProject(project.id, req.session.userId));
 });
 

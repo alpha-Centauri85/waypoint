@@ -91,7 +91,17 @@ switched via `App`'s `view` state), each a list + a full-width inline editor
 project from a template opens `InstantiateTemplateModal` (apply labels per
 module-based section); it returns the new project so `App` selects it on the
 dashboard. "Save as template" from a project is `SaveAsTemplateModal` (new or
-overwrite). Foreign keys are enforced per-connection
+overwrite).
+**Activity log:** an append-only `activities` table (user-scoped; `project_id`
+cascades, `task_id` `ON DELETE SET NULL`). Route handlers call
+`logActivity(userId, {...})` (`models/activities.js`) after a successful mutation
+with a human summary composed at that point (it has the task/status/project
+context); logging swallows its own errors so it can never break the mutation.
+`GET /api/activities?projectId=&taskId=&limit=` reads it back
+(`listActivities`, always user-scoped); the client renders a per-project
+`ActivityDrawer`. When you add a new mutation worth surfacing, add a
+`logActivity` call in its route handler — don't log from models (they stay pure
+DB). Foreign keys are enforced per-connection
 via `PRAGMA foreign_keys = ON` in `server/src/db/index.js`. **Ownership is
 enforced in every query**: project reads/writes are scoped by `user_id`, task
 queries by `project_id`, and subtask authorization joins task→project→user
