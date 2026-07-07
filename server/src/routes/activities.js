@@ -1,22 +1,33 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/requireAuth.js';
-import { listActivities } from '../models/activities.js';
+import { notFound } from '../lib/errors.js';
+import { listActivities, listProjectActivities } from '../models/activities.js';
+import { getProjectAccess } from '../models/members.js';
+import { getTaskById } from '../models/tasks.js';
 
 const router = Router();
 router.use(requireAuth);
 
-// GET /api/activities?projectId=&taskId=&limit= — the signed-in user's activity,
-// most-recent-first. Always user-scoped in the model, so an id for another user's
-// project simply returns nothing.
+// GET /api/activities?projectId=&taskId=&limit=
+//  - projectId (or taskId): the whole project's trail (all members), gated by
+//    project access — shows author_email so shared projects read coherently.
+//  - neither: the signed-in user's own recent actions.
 router.get('/', (req, res) => {
   const { projectId, taskId, limit } = req.query;
-  res.json(
-    listActivities(req.session.userId, {
-      projectId: projectId != null ? Number(projectId) : undefined,
-      taskId: taskId != null ? Number(taskId) : undefined,
-      limit,
-    }),
-  );
+  let pid = projectId != null ? Number(projectId) : null;
+  const tid = taskId != null ? Number(taskId) : null;
+
+  if (pid == null && tid != null) {
+    const task = getTaskById(tid);
+    if (!task) throw notFound('Task not found');
+    pid = task.project_id;
+  }
+
+  if (pid != null) {
+    if (!getProjectAccess(pid, req.session.userId)) throw notFound('Project not found');
+    return res.json(listProjectActivities(pid, { taskId: tid, limit }));
+  }
+  res.json(listActivities(req.session.userId, { limit }));
 });
 
 export default router;

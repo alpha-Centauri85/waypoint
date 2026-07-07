@@ -94,6 +94,14 @@ export function getTaskForUser(id, userId) {
   return ownedByUser.get(id, userId);
 }
 
+// Fetch a task by id with NO ownership check — callers MUST authorize via the
+// task's project (getProjectAccess). Used by subtask/comment guards, which are
+// addressed by task id alone and must allow shared-project collaborators.
+const taskByIdAny = db.prepare('SELECT * FROM tasks WHERE id = ?');
+export function getTaskById(id) {
+  return taskByIdAny.get(id);
+}
+
 export function updateTask(id, projectId, fields) {
   const current = byId.get(id, projectId);
   if (!current) return null;

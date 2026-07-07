@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/requireAuth.js';
-import { badRequest, notFound } from '../lib/errors.js';
+import { badRequest, forbidden, notFound } from '../lib/errors.js';
 import { validateBody } from '../lib/validate.js';
 import { createTaskSchema, updateTaskSchema, reorderTasksSchema } from '../schemas/tasks.js';
-import { getProject } from '../models/projects.js';
+import { getProjectAccess } from '../models/members.js';
 import {
   createTask,
   deleteTask,
@@ -65,11 +65,19 @@ function assertStatusOwned(statusId, userId) {
 const router = Router({ mergeParams: true });
 router.use(requireAuth);
 
-// Authorize the parent project once for every task route below.
+// Authorize the parent project once for every task route below (owner or member).
 router.use((req, res, next) => {
-  const project = getProject(Number(req.params.projectId), req.session.userId);
-  if (!project) throw notFound('Project not found');
-  req.project = project;
+  const access = getProjectAccess(Number(req.params.projectId), req.session.userId);
+  if (!access) throw notFound('Project not found');
+  req.project = access.project;
+  req.role = access.role;
+  next();
+});
+
+// Viewers are read-only: block every mutating verb.
+router.use((req, res, next) => {
+  if (req.method !== 'GET' && req.role === 'viewer')
+    throw forbidden('You have read-only access to this project');
   next();
 });
 
@@ -79,17 +87,20 @@ router.get('/', (req, res) => {
 
 router.post('/', validateBody(createTaskSchema), (req, res) => {
   const { title, statusId, dueDate, notes, priority, labelIds, sectionId } = req.body;
+  // Statuses and labels belong to the project OWNER's library, so collaborators
+  // pick from and are validated against the owner's sets, not their own.
+  const ownerId = req.project.user_id;
   assertSectionInProject(sectionId, req.project.id);
-  assertStatusOwned(statusId, req.session.userId);
+  assertStatusOwned(statusId, ownerId);
   const task = createTask(req.project.id, {
     title,
-    statusId: statusId ?? defaultStatusId(req.session.userId),
+    statusId: statusId ?? defaultStatusId(ownerId),
     dueDate,
     notes,
     priority,
     sectionId,
   });
-  if (labelIds) setTaskLabels(task.id, req.session.userId, labelIds);
+  if (labelIds) setTaskLabels(task.id, ownerId, labelIds);
   logActivity(req.session.userId, {
     projectId: req.project.id,
     taskId: task.id,
@@ -113,13 +124,14 @@ router.get('/:taskId', (req, res) => {
 });
 
 router.patch('/:taskId', validateBody(updateTaskSchema), (req, res) => {
+  const ownerId = req.project.user_id;
   if ('sectionId' in req.body) assertSectionInProject(req.body.sectionId, req.project.id);
-  if ('statusId' in req.body) assertStatusOwned(req.body.statusId, req.session.userId);
+  if ('statusId' in req.body) assertStatusOwned(req.body.statusId, ownerId);
   const before = getTask(Number(req.params.taskId), req.project.id);
   const task = updateTask(Number(req.params.taskId), req.project.id, req.body);
   if (!task) throw notFound('Task not found');
-  if ('labelIds' in req.body) setTaskLabels(task.id, req.session.userId, req.body.labelIds);
-  const entry = summarizeTaskUpdate(before, task, req.body, req.session.userId);
+  if ('labelIds' in req.body) setTaskLabels(task.id, ownerId, req.body.labelIds);
+  const entry = summarizeTaskUpdate(before, task, req.body, ownerId);
   if (entry)
     logActivity(req.session.userId, { projectId: req.project.id, taskId: task.id, ...entry });
   res.json(getTask(task.id, req.project.id));

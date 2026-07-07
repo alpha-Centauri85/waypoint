@@ -20,6 +20,8 @@ import templatesRouter from './routes/templates.js';
 import subtasksRouter from './routes/subtasks.js';
 import activitiesRouter from './routes/activities.js';
 import commentsRouter from './routes/comments.js';
+import membersRouter from './routes/members.js';
+import invitesRouter from './routes/invites.js';
 
 const SqliteStore = SqliteStoreFactory(session);
 
@@ -90,6 +92,8 @@ export function createApp() {
   app.use('/api/activities', activitiesRouter);
   app.use('/api/templates', templatesRouter);
   app.use('/api/projects', projectsRouter);
+  app.use('/api/projects/:projectId/members', membersRouter);
+  app.use('/api/invites', invitesRouter);
   app.use('/api/projects/:projectId/sections', sectionsRouter);
   app.use('/api/projects/:projectId/tasks', tasksRouter);
   app.use('/api/tasks/:taskId/subtasks', subtasksRouter);

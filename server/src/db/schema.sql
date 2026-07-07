@@ -219,3 +219,31 @@ CREATE TABLE IF NOT EXISTS comments (
   updated_at TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_comments_task ON comments(task_id, id);
+
+-- Project sharing (roadmap 19). The project owner stays projects.user_id;
+-- project_members holds *additional* collaborators (editor/viewer). Access to a
+-- project = owner OR a member row. Invites are shareable tokens the owner
+-- generates; accepting one (while signed in) creates the membership.
+CREATE TABLE IF NOT EXISTS project_members (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role       TEXT NOT NULL CHECK (role IN ('editor', 'viewer')),
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (project_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_project_members_user ON project_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_project_members_project ON project_members(project_id);
+
+CREATE TABLE IF NOT EXISTS project_invites (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id  INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  token       TEXT NOT NULL UNIQUE,
+  role        TEXT NOT NULL CHECK (role IN ('editor', 'viewer')),
+  created_by  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  expires_at  TEXT,
+  accepted_at TEXT,
+  accepted_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_project_invites_project ON project_invites(project_id);

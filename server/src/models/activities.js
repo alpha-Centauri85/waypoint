@@ -21,24 +21,28 @@ export function logActivity(userId, { projectId = null, taskId = null, action, s
   }
 }
 
-// Most-recent-first activity for the user, optionally scoped to a project or a
-// single task. Always filtered by user_id so it can't leak across accounts.
-export function listActivities(userId, { projectId, taskId, limit = 50 } = {}) {
-  const clauses = ['user_id = ?'];
-  const params = [userId];
-  if (projectId != null) {
-    clauses.push('project_id = ?');
-    params.push(projectId);
-  }
-  if (taskId != null) {
-    clauses.push('task_id = ?');
-    params.push(taskId);
-  }
-  const cap = Math.min(Math.max(Number(limit) || 50, 1), 200);
+const SELECT = `SELECT a.id, a.project_id, a.task_id, a.action, a.summary, a.created_at,
+                       u.email AS author_email
+                FROM activities a JOIN users u ON u.id = a.user_id`;
+const cap = (limit) => Math.min(Math.max(Number(limit) || 50, 1), 200);
+
+// The signed-in user's own actions across all their projects (global feed).
+export function listActivities(userId, { limit = 50 } = {}) {
   return db
-    .prepare(
-      `SELECT id, project_id, task_id, action, summary, created_at
-       FROM activities WHERE ${clauses.join(' AND ')} ORDER BY id DESC LIMIT ?`,
-    )
-    .all(...params, cap);
+    .prepare(`${SELECT} WHERE a.user_id = ? ORDER BY a.id DESC LIMIT ?`)
+    .all(userId, cap(limit));
+}
+
+// All activity on a project (every member's actions), optionally one task. The
+// CALLER must authorize project access first — this is not user-scoped so a
+// shared project's whole trail is visible to its members, with author attribution.
+export function listProjectActivities(projectId, { taskId, limit = 50 } = {}) {
+  if (taskId != null) {
+    return db
+      .prepare(`${SELECT} WHERE a.project_id = ? AND a.task_id = ? ORDER BY a.id DESC LIMIT ?`)
+      .all(projectId, taskId, cap(limit));
+  }
+  return db
+    .prepare(`${SELECT} WHERE a.project_id = ? ORDER BY a.id DESC LIMIT ?`)
+    .all(projectId, cap(limit));
 }
