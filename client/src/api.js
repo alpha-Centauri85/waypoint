@@ -61,6 +61,16 @@ export const deleteModule = (id) => request(`/api/modules/${id}`, { method: 'DEL
 // Search (projects + tasks, scoped to the user)
 export const search = (q) => request(`/api/search?q=${encodeURIComponent(q)}`);
 
+// Activity log (most-recent-first; scope by project or task)
+export const listActivities = ({ projectId, taskId, limit } = {}) => {
+  const params = new URLSearchParams();
+  if (projectId != null) params.set('projectId', projectId);
+  if (taskId != null) params.set('taskId', taskId);
+  if (limit != null) params.set('limit', limit);
+  const qs = params.toString();
+  return request(`/api/activities${qs ? `?${qs}` : ''}`);
+};
+
 // Templates (reusable project blueprints)
 export const listTemplates = () => request('/api/templates');
 export const getTemplate = (id) => request(`/api/templates/${id}`);

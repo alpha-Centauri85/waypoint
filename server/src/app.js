@@ -18,6 +18,7 @@ import statusesRouter from './routes/statuses.js';
 import tasksRouter from './routes/tasks.js';
 import templatesRouter from './routes/templates.js';
 import subtasksRouter from './routes/subtasks.js';
+import activitiesRouter from './routes/activities.js';
 
 const SqliteStore = SqliteStoreFactory(session);
 
@@ -85,6 +86,7 @@ export function createApp() {
   app.use('/api/modules', modulesRouter);
   app.use('/api/search', searchRouter);
   app.use('/api/statuses', statusesRouter);
+  app.use('/api/activities', activitiesRouter);
   app.use('/api/templates', templatesRouter);
   app.use('/api/projects', projectsRouter);
   app.use('/api/projects/:projectId/sections', sectionsRouter);

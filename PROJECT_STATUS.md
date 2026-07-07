@@ -45,6 +45,7 @@ middleware guards protected routes via `req.session.userId`.
 - `GET/POST /templates`, `GET/PATCH/DELETE /templates/:id`, `POST /templates/from-project` (body `{ projectId, name }` to create or `{ projectId, templateId }` to overwrite), `POST /templates/:id/instantiate` (body `{ name, sectionLabels? }`)
 - `GET/POST /modules`, `POST /modules/bulk`, `GET/PATCH/DELETE /modules/:id`
 - `GET /search?q=` (projects + tasks, user-scoped)
+- `GET /activities?projectId=&taskId=&limit=` (activity log, user-scoped, most-recent-first)
 - `GET/POST /statuses`, `PATCH/DELETE /statuses/:id`, `PATCH /statuses/reorder`
 - `GET/POST /tasks/:taskId/subtasks`, `PATCH/DELETE /tasks/:taskId/subtasks/:subtaskId`
 
@@ -121,6 +122,17 @@ columns (To do / In progress / Done) with counts; compact cards (priority, due,
 labels, notes) open the edit modal on click; dragging a card between columns
 changes its status (`TaskBoard.jsx`). Follow-up: section swimlanes.
 
+**Activity log:** an append-only `activities` table (user-scoped; `project_id`
+cascades, `task_id` nulls on delete so a "deleted task X" record survives). The
+project + task routes call `logActivity` (`models/activities.js`) after each
+mutation — project created/renamed, task created, task updated (status→name,
+rename, priority, due, notes, section, folded into one summary) and task deleted;
+summaries are composed at write time and stored verbatim (an audit trail, not a
+live view). `GET /api/activities?projectId=&taskId=&limit=` (`listActivities`).
+The client shows a per-project timeline in an `ActivityDrawer` (project actions
+menu → **Activity**): icon per action + relative time. User-authored comments are
+the planned follow-up (roadmap 18).
+
 **Search:** a debounced global search (`SearchBar`, dashboard) over projects
 (name/description) and tasks (title/notes), user-scoped with LIKE wildcards
 escaped (`GET /api/search`); the dropdown groups projects + tasks and selecting a
@@ -168,7 +180,7 @@ Disabled under test; limits set by `AUTH_RATE_WINDOW_MS`/`AUTH_RATE_MAX`
 
 ## Verified
 
-ESLint clean; Prettier clean; 77 passing tests (Vitest — 58 server incl. full
+ESLint clean; Prettier clean; 80 passing tests (Vitest — 61 server incl. full
 register→project→task→subtask flow, cross-user isolation, error-handling,
 validation, security, null-clearing merge, and reorder/append; 19 client incl.
 TaskEditModal open→edit→PATCH, `arrangeTasks` sort/filter, and a `moveTask`/DnD
