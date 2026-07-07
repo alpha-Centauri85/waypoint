@@ -148,6 +148,16 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
       that references it (that reach is the point, but decide it explicitly:
       shared library vs template-private copies). Depends on / extends 21;
       pairs with the Settings screen (22).
+- [ ] **25. Templates v2 — fixed sections/tasks/subtasks + label-injected
+      modules** (L) — a template becomes a real project blueprint with two kinds
+      of content: a **fixed skeleton** (ordered sections → fixed tasks → subtasks,
+      always created) and **modular injection** (a section flagged with labels
+      pulls in, at instantiation, the tasks of every library module carrying a
+      matching label — appended after the fixed tasks). Supersedes the v1
+      "module = section, no subtasks" structure. New tables for template
+      sections/tasks/subtasks + section-label slots; modules gain subtasks +
+      labels. Depends on the module library (24). Editor grows sections + subtasks + a per-section label picker. Full model + schema sketch + open decisions
+      (auto-inject vs pick-at-instantiation) in `docs/labels-sections-templates.md`.
 - [ ] **23. Custom statuses (workflow states)** (L) — replace the hardcoded
       `todo`/`doing`/`done` with user-defined states. Sketch: a `statuses` table
       (name, color, `position`, and an `is_done`/terminal flag) and `tasks`
