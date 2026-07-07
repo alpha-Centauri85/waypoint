@@ -30,6 +30,7 @@ import {
   Tag,
   Tags,
   Trash2,
+  Users,
   X,
 } from 'lucide-react';
 import {
@@ -52,6 +53,7 @@ import TaskEditModal from './TaskEditModal.jsx';
 import LabelManagerModal from './LabelManagerModal.jsx';
 import SaveAsTemplateModal from './SaveAsTemplateModal.jsx';
 import ActivityDrawer from './ActivityDrawer.jsx';
+import ShareModal from './ShareModal.jsx';
 
 const labelSwatch = (c) => `var(--mantine-color-${c}-6)`;
 
@@ -126,6 +128,10 @@ export default function TaskList({ project, onTasksChanged }) {
   const [view, setView] = useState('list'); // 'list' | 'board'
   const [manageLabelsOpen, setManageLabelsOpen] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const role = project.role ?? 'owner';
+  const canEdit = role !== 'viewer'; // owner + editor may mutate
+  const isOwner = role === 'owner';
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const [draggedSectionId, setDraggedSectionId] = useState(null);
@@ -394,7 +400,8 @@ export default function TaskList({ project, onTasksChanged }) {
     <TaskCard
       key={task.id}
       task={task}
-      reorderEnabled={reorderEnabled}
+      canEdit={canEdit}
+      reorderEnabled={reorderEnabled && canEdit}
       drag={taskDragProps(task)}
       onSetStatus={(statusId) => changeStatus(task, statusId)}
       onEdit={() => setEditingTask(task)}
@@ -436,15 +443,25 @@ export default function TaskList({ project, onTasksChanged }) {
               </ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
-              <Menu.Item
-                leftSection={<LayoutTemplate size={15} />}
-                onClick={() => setTemplateModalOpen(true)}
-              >
-                Save as template
+              <Menu.Item leftSection={<Users size={15} />} onClick={() => setShareOpen(true)}>
+                {isOwner ? 'Share' : 'Members'}
               </Menu.Item>
-              <Menu.Item leftSection={<Tags size={15} />} onClick={() => setManageLabelsOpen(true)}>
-                Manage labels
-              </Menu.Item>
+              {isOwner && (
+                <Menu.Item
+                  leftSection={<LayoutTemplate size={15} />}
+                  onClick={() => setTemplateModalOpen(true)}
+                >
+                  Save as template
+                </Menu.Item>
+              )}
+              {isOwner && (
+                <Menu.Item
+                  leftSection={<Tags size={15} />}
+                  onClick={() => setManageLabelsOpen(true)}
+                >
+                  Manage labels
+                </Menu.Item>
+              )}
               <Menu.Item leftSection={<History size={15} />} onClick={() => setActivityOpen(true)}>
                 Activity
               </Menu.Item>
@@ -453,17 +470,19 @@ export default function TaskList({ project, onTasksChanged }) {
         </Group>
       </Group>
 
-      <form onSubmit={(e) => (e.preventDefault(), addTask(newTitle), setNewTitle(''))}>
-        <Group gap="xs" wrap="nowrap">
-          <TextInput
-            placeholder="New task"
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.currentTarget.value)}
-            style={{ flex: 1 }}
-          />
-          <Button type="submit">Add task</Button>
-        </Group>
-      </form>
+      {canEdit && (
+        <form onSubmit={(e) => (e.preventDefault(), addTask(newTitle), setNewTitle(''))}>
+          <Group gap="xs" wrap="nowrap">
+            <TextInput
+              placeholder="New task"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.currentTarget.value)}
+              style={{ flex: 1 }}
+            />
+            <Button type="submit">Add task</Button>
+          </Group>
+        </form>
+      )}
 
       {tasks.length > 0 && (
         <Group justify="space-between" gap="xs">
@@ -678,21 +697,23 @@ export default function TaskList({ project, onTasksChanged }) {
           )}
 
           {/* Add a section */}
-          <form onSubmit={addSection}>
-            <Group gap="xs" wrap="nowrap" maw={360}>
-              <TextInput
-                size="xs"
-                placeholder="New section"
-                value={newSectionName}
-                onChange={(e) => setNewSectionName(e.currentTarget.value)}
-                style={{ flex: 1 }}
-                leftSection={<Plus size={14} />}
-              />
-              <Button type="submit" size="xs" variant="light">
-                Add section
-              </Button>
-            </Group>
-          </form>
+          {canEdit && (
+            <form onSubmit={addSection}>
+              <Group gap="xs" wrap="nowrap" maw={360}>
+                <TextInput
+                  size="xs"
+                  placeholder="New section"
+                  value={newSectionName}
+                  onChange={(e) => setNewSectionName(e.currentTarget.value)}
+                  style={{ flex: 1 }}
+                  leftSection={<Plus size={14} />}
+                />
+                <Button type="submit" size="xs" variant="light">
+                  Add section
+                </Button>
+              </Group>
+            </form>
+          )}
         </Stack>
       )}
 
@@ -723,6 +744,13 @@ export default function TaskList({ project, onTasksChanged }) {
         projectId={project.id}
         projectName={project.name}
         onClose={() => setActivityOpen(false)}
+      />
+
+      <ShareModal
+        opened={shareOpen}
+        project={project}
+        onClose={() => setShareOpen(false)}
+        onChanged={onTasksChanged}
       />
     </Stack>
   );

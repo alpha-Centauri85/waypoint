@@ -13,9 +13,28 @@ export function isOverdue(task, isDone) {
 // One task row: status pill (click to pick a status), title, priority/notes/due/
 // label meta, edit + delete, and its subtasks. Drag behaviour is driven by the
 // parent via `drag` (handlers + dragging/dragOver flags) so reordering can be scoped.
-export default function TaskCard({ task, reorderEnabled, drag, onSetStatus, onEdit, onDelete }) {
+export default function TaskCard({
+  task,
+  reorderEnabled,
+  drag,
+  onSetStatus,
+  onEdit,
+  onDelete,
+  canEdit = true,
+}) {
   const { statuses, statusById } = useStatuses();
   const status = statusById(task.status_id);
+  const statusBadge = (
+    <Badge
+      color={status.color}
+      variant={status.is_done ? 'filled' : 'light'}
+      w={110}
+      aria-label={canEdit ? `Status: ${status.name} — change` : `Status: ${status.name}`}
+      style={{ cursor: canEdit ? 'pointer' : 'default', flexShrink: 0 }}
+    >
+      {status.name}
+    </Badge>
+  );
   return (
     <Paper
       withBorder
@@ -42,38 +61,32 @@ export default function TaskCard({ task, reorderEnabled, drag, onSetStatus, onEd
               />
             </Tooltip>
           )}
-          <Menu shadow="md" width={180} position="bottom-start" withinPortal>
-            <Menu.Target>
-              <Badge
-                color={status.color}
-                variant={status.is_done ? 'filled' : 'light'}
-                w={110}
-                aria-label={`Status: ${status.name} — change`}
-                style={{ cursor: 'pointer', flexShrink: 0 }}
-              >
-                {status.name}
-              </Badge>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Label>Set status</Menu.Label>
-              {statuses.map((s) => (
-                <Menu.Item
-                  key={s.id}
-                  leftSection={
-                    <ColorSwatch
-                      color={`var(--mantine-color-${s.color}-6)`}
-                      size={12}
-                      withShadow={false}
-                    />
-                  }
-                  rightSection={s.id === task.status_id ? <Check size={14} /> : null}
-                  onClick={() => onSetStatus(s.id)}
-                >
-                  {s.name}
-                </Menu.Item>
-              ))}
-            </Menu.Dropdown>
-          </Menu>
+          {canEdit ? (
+            <Menu shadow="md" width={180} position="bottom-start" withinPortal>
+              <Menu.Target>{statusBadge}</Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Label>Set status</Menu.Label>
+                {statuses.map((s) => (
+                  <Menu.Item
+                    key={s.id}
+                    leftSection={
+                      <ColorSwatch
+                        color={`var(--mantine-color-${s.color}-6)`}
+                        size={12}
+                        withShadow={false}
+                      />
+                    }
+                    rightSection={s.id === task.status_id ? <Check size={14} /> : null}
+                    onClick={() => onSetStatus(s.id)}
+                  >
+                    {s.name}
+                  </Menu.Item>
+                ))}
+              </Menu.Dropdown>
+            </Menu>
+          ) : (
+            statusBadge
+          )}
           <Text truncate>{task.title}</Text>
           {task.priority > 0 && (
             <Tooltip label={`${PRIORITY_META[task.priority].label} priority`}>
@@ -108,16 +121,18 @@ export default function TaskCard({ task, reorderEnabled, drag, onSetStatus, onEd
             </Badge>
           ))}
         </Group>
-        <Group gap={4} wrap="nowrap">
-          <ActionIcon variant="subtle" aria-label="Edit task" onClick={onEdit}>
-            <Pencil size={16} />
-          </ActionIcon>
-          <ActionIcon variant="subtle" color="red" aria-label="Delete task" onClick={onDelete}>
-            <Trash2 size={16} />
-          </ActionIcon>
-        </Group>
+        {canEdit && (
+          <Group gap={4} wrap="nowrap">
+            <ActionIcon variant="subtle" aria-label="Edit task" onClick={onEdit}>
+              <Pencil size={16} />
+            </ActionIcon>
+            <ActionIcon variant="subtle" color="red" aria-label="Delete task" onClick={onDelete}>
+              <Trash2 size={16} />
+            </ActionIcon>
+          </Group>
+        )}
       </Group>
-      <Subtasks taskId={task.id} />
+      <Subtasks taskId={task.id} canEdit={canEdit} />
     </Paper>
   );
 }

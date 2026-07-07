@@ -61,6 +61,21 @@ export const deleteModule = (id) => request(`/api/modules/${id}`, { method: 'DEL
 // Search (projects + tasks, scoped to the user)
 export const search = (q) => request(`/api/search?q=${encodeURIComponent(q)}`);
 
+// Sharing — members, invites, and a project's owner-scoped statuses/labels.
+export const listProjectStatuses = (projectId) => request(`/api/projects/${projectId}/statuses`);
+export const listProjectLabels = (projectId) => request(`/api/projects/${projectId}/labels`);
+export const listMembers = (projectId) => request(`/api/projects/${projectId}/members`);
+export const createInvite = (projectId, role) =>
+  request(`/api/projects/${projectId}/members/invites`, { method: 'POST', body: { role } });
+export const revokeInvite = (projectId, inviteId) =>
+  request(`/api/projects/${projectId}/members/invites/${inviteId}`, { method: 'DELETE' });
+export const setMemberRole = (projectId, userId, role) =>
+  request(`/api/projects/${projectId}/members/${userId}`, { method: 'PATCH', body: { role } });
+export const removeMember = (projectId, userId) =>
+  request(`/api/projects/${projectId}/members/${userId}`, { method: 'DELETE' });
+export const previewInvite = (token) => request(`/api/invites/${token}`);
+export const acceptInvite = (token) => request(`/api/invites/${token}/accept`, { method: 'POST' });
+
 // Activity log (most-recent-first; scope by project or task)
 export const listActivities = ({ projectId, taskId, limit } = {}) => {
   const params = new URLSearchParams();

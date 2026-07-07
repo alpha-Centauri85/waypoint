@@ -121,7 +121,12 @@ export default function TaskEditModal({ project, task, sections = [], opened, on
             valueFormat="MMM D, YYYY"
             clearable
           />
-          <LabelPicker value={labelIds} onChange={setLabelIds} />
+          <LabelPicker
+            value={labelIds}
+            onChange={setLabelIds}
+            projectId={project.id}
+            canCreate={(project.role ?? 'owner') === 'owner'}
+          />
           <Textarea
             label="Notes"
             placeholder="Add any details…"

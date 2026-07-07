@@ -33,8 +33,10 @@ const requireOwner = (req) => {
 router.get('/', (req, res) => {
   res.json({
     role: req.role,
+    me: req.session.userId,
     members: listMembers(req.project.id),
-    invites: listInvites(req.project.id),
+    // Only the owner needs the pending-invite list.
+    invites: req.role === 'owner' ? listInvites(req.project.id) : [],
   });
 });
 

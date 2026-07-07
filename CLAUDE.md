@@ -112,6 +112,20 @@ enforced in every query**: project reads/writes are scoped by `user_id`, task
 queries by `project_id`, and subtask authorization joins task→project→user
 (`getTaskForUser`). Never trust an id from the URL without this scoping.
 
+**Sharing / access control:** projects can be shared (owner/editor/viewer). The
+owner is `projects.user_id`; `project_members` holds editor/viewer collaborators;
+`project_invites` are shareable tokens (`models/members.js`). Authorize with
+`getProjectAccess(projectId, userId) → { project, role } | null` — **every**
+project/task/section/subtask/comment guard uses it (not the old owner-only
+`getProject`). Viewers are read-only: guards throw `forbidden` (403) on non-GET.
+Delete + member management are owner-only. Because statuses and labels are
+per-user, a shared project resolves them against the **owner**: task routes
+validate/default status + assign labels against `req.project.user_id`, and
+`GET /projects/:id/statuses` + `/labels` expose the owner's sets (client wraps the
+project view in `ProjectStatusesProvider` and passes `projectId` to `LabelPicker`).
+When adding project-scoped reads/writes, authorize via `getProjectAccess` and
+scope statuses/labels to the owner — don't reintroduce a bare `user_id` check.
+
 **Server layout (`server/src`):**
 
 - `index.js` — entry point; only starts the HTTP listener.

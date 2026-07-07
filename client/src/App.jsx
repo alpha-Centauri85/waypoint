@@ -21,12 +21,17 @@ import Dashboard from './components/Dashboard.jsx';
 import SettingsScreen from './components/SettingsScreen.jsx';
 import TemplatesPage from './components/TemplatesPage.jsx';
 import ModulesPage from './components/ModulesPage.jsx';
+import InviteAccept from './components/InviteAccept.jsx';
+
+// An /invite/:token deep link (SPA fallback serves index.html for it).
+const inviteToken = () => window.location.pathname.match(/^\/invite\/([^/]+)$/)?.[1] ?? null;
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('dashboard'); // dashboard | settings | templates | modules
   const [focusProjectId, setFocusProjectId] = useState(null); // project to select after nav
+  const [invite, setInvite] = useState(inviteToken); // token from /invite/:token, or null
 
   useEffect(() => {
     getMe()
@@ -47,6 +52,14 @@ export default function App() {
     setView('dashboard');
   }
 
+  // Finished with an invite: clear the /invite/ URL and open the project (if joined).
+  function finishInvite(projectId) {
+    window.history.replaceState({}, '', '/');
+    setInvite(null);
+    setView('dashboard');
+    if (projectId != null) setFocusProjectId(projectId);
+  }
+
   return (
     <MantineProvider theme={theme} forceColorScheme="dark">
       <Notifications position="top-right" />
@@ -54,7 +67,11 @@ export default function App() {
         <Center h="100vh">
           <Loader color="teal" />
         </Center>
-      ) : user ? (
+      ) : !user ? (
+        <AuthForm onAuthed={setUser} />
+      ) : invite ? (
+        <InviteAccept token={invite} onDone={finishInvite} />
+      ) : (
         <StatusesProvider>
           <AppFrame
             user={user}
@@ -79,8 +96,6 @@ export default function App() {
             )}
           </AppFrame>
         </StatusesProvider>
-      ) : (
-        <AuthForm onAuthed={setUser} />
       )}
     </MantineProvider>
   );

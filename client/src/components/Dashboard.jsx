@@ -22,6 +22,7 @@ import { notifyError } from '../notify.js';
 import TaskList from './TaskList.jsx';
 import ProjectEditModal from './ProjectEditModal.jsx';
 import SearchBar from './SearchBar.jsx';
+import { ProjectStatusesProvider } from '../statuses.jsx';
 
 // Templates and the module library live on their own pages (header menu);
 // `onOpenTemplates` navigates there. `focusProjectId` selects a project after
@@ -156,7 +157,9 @@ export default function Dashboard({ onOpenTemplates, focusProjectId, onFocused }
 
         <Grid.Col span={{ base: 12, sm: 8, md: 9 }}>
           {selected ? (
-            <TaskList project={selected} onTasksChanged={refresh} />
+            <ProjectStatusesProvider key={selected.id} projectId={selected.id}>
+              <TaskList project={selected} onTasksChanged={refresh} />
+            </ProjectStatusesProvider>
           ) : (
             !loading && <EmptyState />
           )}
@@ -178,6 +181,7 @@ function ProjectRow({ project, active, onSelect, onEdit, onDelete }) {
   const done = project.done_count ?? 0;
   const pct = total ? Math.round((done / total) * 100) : 0;
   const complete = total > 0 && done === total;
+  const role = project.role ?? 'owner';
 
   return (
     <Stack
@@ -201,31 +205,45 @@ function ProjectRow({ project, active, onSelect, onEdit, onDelete }) {
         >
           {project.name}
         </Text>
-        <ActionIcon
-          variant="subtle"
-          color="gray"
-          size="sm"
-          aria-label="Edit project"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit();
-          }}
-        >
-          <Pencil size={14} />
-        </ActionIcon>
-        <ActionIcon
-          variant="subtle"
-          color="red"
-          size="sm"
-          aria-label="Delete project"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-        >
-          <Trash2 size={14} />
-        </ActionIcon>
+        {role !== 'viewer' && (
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            size="sm"
+            aria-label="Edit project"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
+          >
+            <Pencil size={14} />
+          </ActionIcon>
+        )}
+        {role === 'owner' && (
+          <ActionIcon
+            variant="subtle"
+            color="red"
+            size="sm"
+            aria-label="Delete project"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+          >
+            <Trash2 size={14} />
+          </ActionIcon>
+        )}
       </Group>
+      {role !== 'owner' && (
+        <Group gap={6} wrap="nowrap">
+          <Badge size="xs" variant="light" color={role === 'editor' ? 'teal' : 'gray'}>
+            {role}
+          </Badge>
+          <Text size="xs" c="dark.2" truncate>
+            shared by {project.owner_email}
+          </Text>
+        </Group>
+      )}
       {(project.labels ?? []).length > 0 && (
         <Group gap={4}>
           {project.labels.map((label) => (
