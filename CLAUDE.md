@@ -206,6 +206,9 @@ hard-coded hex so the brand stays consistent.
 - Prettier is authoritative (single quotes, semicolons, trailing commas, 100
   cols). Run `npm run format` before committing.
 - SQLite has no boolean type: `done` is stored as `0`/`1`.
+- Spelling: US spelling in code (identifiers, DB columns, existing symbols like
+  `color`, and comments that match surrounding code); NZ English in prose and
+  docs authored for the user. Match the existing style rather than renaming.
 - Tests use Vitest. Server tests run against an in-memory DB configured in
   `server/test/setup.js`; client tests run in jsdom with Testing Library and
   stub `fetch`.
