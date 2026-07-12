@@ -12,6 +12,7 @@ import {
   revokeInvite,
   setMemberRole,
 } from '../models/members.js';
+import { createShare, getActiveShareByProject, revokeShare } from '../models/publicShares.js';
 
 // mergeParams lets this router read :projectId from the mount path.
 const router = Router({ mergeParams: true });
@@ -31,12 +32,17 @@ const requireOwner = (req) => {
 };
 
 router.get('/', (req, res) => {
+  // The public share is owner-only info; never leak the token to a collaborator
+  // (holding it grants no-login access to anyone).
+  const share = req.role === 'owner' ? getActiveShareByProject(req.project.id) : null;
   res.json({
     role: req.role,
     me: req.session.userId,
     members: listMembers(req.project.id),
     // Only the owner needs the pending-invite list.
     invites: req.role === 'owner' ? listInvites(req.project.id) : [],
+    // Owner-only public no-login share link ({ token } or null).
+    publicShare: share ? { token: share.token } : null,
   });
 });
 
@@ -51,6 +57,21 @@ router.delete('/invites/:inviteId', (req, res) => {
   requireOwner(req);
   if (!revokeInvite(Number(req.params.inviteId), req.project.id))
     throw notFound('Invite not found');
+  res.status(204).end();
+});
+
+// Public no-login share link (owner-only). Registered before the /:userId routes
+// so "public-share" is never mistaken for a member id. Create is idempotent
+// (returns the existing link if one exists); revoke deletes it immediately.
+router.post('/public-share', (req, res) => {
+  requireOwner(req);
+  const share = createShare(req.project.id, req.session.userId);
+  res.status(201).json({ token: share.token });
+});
+
+router.delete('/public-share', (req, res) => {
+  requireOwner(req);
+  revokeShare(req.project.id);
   res.status(204).end();
 });
 

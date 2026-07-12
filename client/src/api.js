@@ -76,6 +76,14 @@ export const removeMember = (projectId, userId) =>
 export const previewInvite = (token) => request(`/api/invites/${token}`);
 export const acceptInvite = (token) => request(`/api/invites/${token}/accept`, { method: 'POST' });
 
+// Public no-login, read-only share link. getPublicProject is unauthenticated
+// (works with no session); create/revoke are owner-only.
+export const getPublicProject = (token) => request(`/api/public/${token}`);
+export const createPublicShare = (projectId) =>
+  request(`/api/projects/${projectId}/members/public-share`, { method: 'POST' });
+export const revokePublicShare = (projectId) =>
+  request(`/api/projects/${projectId}/members/public-share`, { method: 'DELETE' });
+
 // Activity log (most-recent-first; scope by project or task)
 export const listActivities = ({ projectId, taskId, limit } = {}) => {
   const params = new URLSearchParams();
