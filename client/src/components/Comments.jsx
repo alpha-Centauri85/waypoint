@@ -86,13 +86,19 @@ export default function Comments({ taskId }) {
           <Loader size="sm" color="teal" />
         </Group>
       ) : comments.length === 0 ? (
-        <Text size="xs" c="dark.2">
+        <Text size="xs" c="dimmed">
           No comments yet.
         </Text>
       ) : (
         <Stack gap="xs">
           {comments.map((c) => (
-            <Paper key={c.id} withBorder p="xs" radius="md" bg="dark.7">
+            <Paper
+              key={c.id}
+              withBorder
+              p="xs"
+              radius="md"
+              bg="light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-7))"
+            >
               {editingId === c.id ? (
                 <Stack gap="xs">
                   <Textarea
@@ -117,7 +123,7 @@ export default function Comments({ taskId }) {
                     <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
                       {c.body}
                     </Text>
-                    <Text size="xs" c="dark.2" mt={2}>
+                    <Text size="xs" c="dimmed" mt={2}>
                       {c.author_email} · {asDate(c.created_at).fromNow()}
                       {c.updated_at ? ' · edited' : ''}
                     </Text>

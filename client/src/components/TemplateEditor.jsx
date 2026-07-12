@@ -185,7 +185,13 @@ export default function TemplateEditor({ templateId, onBack, onSaved, onInstanti
 
             <Stack gap="md">
               {sections.map((s) => (
-                <Paper key={s.key} withBorder p="md" radius="md" bg="dark.7">
+                <Paper
+                  key={s.key}
+                  withBorder
+                  p="md"
+                  radius="md"
+                  bg="light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-7))"
+                >
                   <Group gap="xs" wrap="nowrap" mb="sm">
                     <TextInput
                       placeholder="Section name"
@@ -209,7 +215,7 @@ export default function TemplateEditor({ templateId, onBack, onSaved, onInstanti
                     onChange={(ids) => setSection(s.key, { labelIds: ids })}
                   />
 
-                  <Text size="xs" c="dark.2" mt="md" mb={4}>
+                  <Text size="xs" c="dimmed" mt="md" mb={4}>
                     Fixed tasks
                   </Text>
                   <BlueprintTasksEditor
@@ -220,7 +226,7 @@ export default function TemplateEditor({ templateId, onBack, onSaved, onInstanti
               ))}
 
               {sections.length === 0 && (
-                <Text size="sm" c="dark.2">
+                <Text size="sm" c="dimmed">
                   No sections yet — add one below.
                 </Text>
               )}

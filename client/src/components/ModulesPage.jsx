@@ -103,13 +103,19 @@ export default function ModulesPage() {
           </Button>
         </Group>
       </Group>
-      <Text size="sm" c="dark.2" mb="md">
+      <Text size="sm" c="dimmed" mb="md">
         Reusable task bundles, injected into a project’s section when you apply a matching label at
         creation time.
       </Text>
 
       <Collapse in={bulkOpen}>
-        <Paper withBorder p="md" radius="md" mb="md" bg="dark.7">
+        <Paper
+          withBorder
+          p="md"
+          radius="md"
+          mb="md"
+          bg="light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-7))"
+        >
           <Textarea
             label="Create shells"
             placeholder="One module name per line"
@@ -132,8 +138,8 @@ export default function ModulesPage() {
         </Group>
       ) : modules.length === 0 ? (
         <Stack align="center" gap="xs" py="xl">
-          <Boxes size={40} color="var(--mantine-color-dark-3)" />
-          <Text c="dark.2" ta="center">
+          <Boxes size={40} color="var(--mantine-color-dimmed)" />
+          <Text c="dimmed" ta="center">
             No modules yet. Create one, then tag it with labels so templates can pull it in.
           </Text>
         </Stack>

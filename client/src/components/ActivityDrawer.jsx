@@ -53,7 +53,7 @@ export default function ActivityDrawer({ opened, projectId, projectName, onClose
           <Loader color="teal" />
         </Group>
       ) : items.length === 0 ? (
-        <Text c="dark.2" ta="center" py="xl">
+        <Text c="dimmed" ta="center" py="xl">
           No activity yet.
         </Text>
       ) : (
@@ -71,7 +71,7 @@ export default function ActivityDrawer({ opened, projectId, projectName, onClose
                     label={asDate(a.created_at).format('MMM D, YYYY h:mm A')}
                     openDelay={300}
                   >
-                    <Text size="xs" c="dark.2">
+                    <Text size="xs" c="dimmed">
                       {asDate(a.created_at).fromNow()}
                     </Text>
                   </Tooltip>
