@@ -37,9 +37,40 @@ ensureColumn('tasks', 'section_id', 'INTEGER REFERENCES sections(id) ON DELETE S
 // Custom-status FK. Backfilled from the legacy `status` text by models/statuses.js
 // when a user's default statuses are seeded.
 ensureColumn('tasks', 'status_id', 'INTEGER REFERENCES statuses(id)');
+// Subtask custom-status FK. Mirrors tasks.status_id (no ON DELETE clause —
+// deleteStatus reassigns subtasks to a fallback, so they never dangle). The
+// legacy `done` column is kept and derived from the chosen status's is_done.
+ensureColumn('subtasks', 'status_id', 'INTEGER REFERENCES statuses(id)');
 // Indexes created here (not in schema.sql) so they run after the columns exist.
 db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_section ON tasks(section_id)');
 db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status_id)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_subtasks_status ON subtasks(status_id)');
+
+// Backfill existing subtasks' status_id from their derived `done`, scoped to the
+// project OWNER's status set (statuses are per-user). done=1 → the owner's first
+// is_done status; done=0 → the owner's first status by workflow position. Only
+// NULL rows are touched, so it's idempotent and a no-op once every subtask has a
+// status. A subtask exists only under a task whose owner's statuses were seeded
+// when the task got its status_id, so the owner's set is present; if an owner
+// somehow has none yet the subquery yields NULL and the row is left as-is.
+db.prepare(
+  `UPDATE subtasks SET status_id = (
+     SELECT s.id FROM statuses s
+     JOIN tasks t ON t.id = subtasks.task_id
+     JOIN projects p ON p.id = t.project_id
+     WHERE s.user_id = p.user_id AND s.is_done = 1
+     ORDER BY s.position LIMIT 1)
+   WHERE status_id IS NULL AND done = 1`,
+).run();
+db.prepare(
+  `UPDATE subtasks SET status_id = (
+     SELECT s.id FROM statuses s
+     JOIN tasks t ON t.id = subtasks.task_id
+     JOIN projects p ON p.id = t.project_id
+     WHERE s.user_id = p.user_id
+     ORDER BY s.position LIMIT 1)
+   WHERE status_id IS NULL AND done = 0`,
+).run();
 
 // One-time migration of v1 templates (module = section via template_modules) to
 // v2 (template_sections + template_tasks). Idempotent: it consumes and clears
