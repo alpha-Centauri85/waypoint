@@ -249,6 +249,24 @@ CREATE TABLE IF NOT EXISTS project_invites (
 );
 CREATE INDEX IF NOT EXISTS idx_project_invites_project ON project_invites(project_id);
 
+-- Public, no-login, read-only share links (roadmap 29). Distinct from
+-- project_invites: an owner generates one token per project that lets *anyone*
+-- (no account, no session) view a whitelisted, read-only projection of the
+-- project. There is no role (the CHECK on project_invites would reject a public
+-- one), no expiry, and no membership is ever created. Revoke = DELETE the row
+-- (revoked_at is kept for defensive filtering, but the row is removed on revoke).
+-- UNIQUE(project_id) enforces one active link per project.
+CREATE TABLE IF NOT EXISTS public_shares (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  token      TEXT NOT NULL UNIQUE,
+  created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  revoked_at TEXT,
+  UNIQUE (project_id)
+);
+CREATE INDEX IF NOT EXISTS idx_public_shares_token ON public_shares(token);
+
 -- In-app notifications (roadmap 20). Currently populated by the due-date reminder
 -- sweep (models/notifications.js): one row per user per due/overdue task. Both
 -- task_id and project_id cascade — a reminder is meaningless once its task/project
