@@ -105,7 +105,7 @@ export default function NotificationBell({ onOpenProject }) {
           justify="space-between"
           px="sm"
           py="xs"
-          style={{ borderBottom: '1px solid var(--mantine-color-dark-4)' }}
+          style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}
         >
           <Text fw={600} size="sm">
             Reminders
@@ -118,7 +118,7 @@ export default function NotificationBell({ onOpenProject }) {
         </Group>
         {items.length === 0 ? (
           <Box px="sm" py="lg">
-            <Text size="sm" c="dark.2" ta="center">
+            <Text size="sm" c="dimmed" ta="center">
               Nothing due. You&rsquo;re all caught up.
             </Text>
           </Box>
@@ -133,7 +133,9 @@ export default function NotificationBell({ onOpenProject }) {
                   py="xs"
                   style={{
                     display: 'block',
-                    backgroundColor: n.read_at ? 'transparent' : 'var(--mantine-color-dark-6)',
+                    backgroundColor: n.read_at
+                      ? 'transparent'
+                      : 'light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-6))',
                   }}
                 >
                   <Group gap="xs" wrap="nowrap" align="flex-start">
@@ -150,7 +152,7 @@ export default function NotificationBell({ onOpenProject }) {
                       <Text size="sm" lineClamp={2}>
                         {n.message}
                       </Text>
-                      <Text size="xs" c="dark.2">
+                      <Text size="xs" c="dimmed">
                         {n.project_name ? `${n.project_name} · ` : ''}
                         {asDate(n.created_at).fromNow()}
                       </Text>

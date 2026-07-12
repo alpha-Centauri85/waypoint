@@ -18,6 +18,37 @@ const dark = [
   '#070C12', // 9
 ];
 
+// Light-mode neutrals: a navy-tinted grey ramp (light → dark) from the brand
+// kit, so borders, dimmed text, and surfaces stay on-brand in light mode.
+// Mantine derives light-scheme tokens from this: hover = gray.0, default border
+// = gray.4, dimmed text = gray.6, body text = theme.black.
+const gray = [
+  '#EDF0F4', // 0 subtle hover (just under the body background)
+  '#E3E8EF', // 1 hairline / subtle border
+  '#D3DBE5', // 2
+  '#BFC9D6', // 3
+  '#A7B3C4', // 4 default border
+  '#8A98AC', // 5
+  '#5E6C80', // 6 dimmed text
+  '#43505F', // 7
+  '#2B3543', // 8
+  '#16202C', // 9 strongest text
+];
+
+// Full brand navy ramp (light → dark), kept available for brand accents.
+const navy = [
+  '#E9ECF1',
+  '#C7D0DC',
+  '#A5B3C6',
+  '#8397B1',
+  '#61799B',
+  '#3F5C86',
+  '#2A4570',
+  '#1A2E4D',
+  '#131F36',
+  '#0D1B2A',
+];
+
 // Brand teal (#14B8A6 at index 6).
 const teal = [
   '#E6FBF7',
@@ -50,7 +81,7 @@ export const theme = createTheme({
   primaryColor: 'teal',
   // Slightly brighter teal for filled controls so they pop on navy.
   primaryShade: { light: 6, dark: 5 },
-  colors: { dark, teal, amber },
+  colors: { dark, gray, navy, teal, amber },
   white: '#FFFFFF',
   black: '#0E1621',
 
@@ -73,11 +104,18 @@ export const theme = createTheme({
   radius: { md: '10px', lg: '14px' },
 
   components: {
-    Paper: { defaultProps: { bg: 'dark.6' } },
+    // Surfaces flip with the scheme: white cards on light, brand navy on dark.
+    Paper: {
+      defaultProps: { bg: 'light-dark(var(--mantine-color-white), var(--mantine-color-dark-6))' },
+    },
     Modal: {
       styles: {
-        content: { backgroundColor: 'var(--mantine-color-dark-6)' },
-        header: { backgroundColor: 'var(--mantine-color-dark-6)' },
+        content: {
+          backgroundColor: 'light-dark(var(--mantine-color-white), var(--mantine-color-dark-6))',
+        },
+        header: {
+          backgroundColor: 'light-dark(var(--mantine-color-white), var(--mantine-color-dark-6))',
+        },
       },
     },
   },

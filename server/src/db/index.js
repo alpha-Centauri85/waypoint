@@ -30,6 +30,8 @@ function ensureColumn(table, column, definition) {
     .some((c) => c.name === column);
   if (!exists) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
 }
+// UI colour-scheme preference, persisted so it follows the user across devices.
+ensureColumn('users', 'theme', "TEXT NOT NULL DEFAULT 'dark'");
 ensureColumn('tasks', 'priority', 'INTEGER NOT NULL DEFAULT 0');
 // section_id is added after `sections` is created by the schema above, so the
 // referenced table exists when the column is added to an older tasks table.

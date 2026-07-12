@@ -123,7 +123,13 @@ export default function ShareModal({ opened, project, onClose, onChanged }) {
               {data.invites.length > 0 && (
                 <Stack gap="xs">
                   {data.invites.map((inv) => (
-                    <Paper key={inv.id} withBorder p="xs" radius="md" bg="dark.7">
+                    <Paper
+                      key={inv.id}
+                      withBorder
+                      p="xs"
+                      radius="md"
+                      bg="light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-7))"
+                    >
                       <Group justify="space-between" wrap="nowrap">
                         <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
                           <Badge size="xs" variant="light" color="gray">

@@ -123,7 +123,7 @@ export default function InstantiateTemplateModal({ opened, templateId, onClose, 
                   />
                 ))}
                 {(template.sections ?? []).length === 0 && (
-                  <Text size="sm" c="dark.2">
+                  <Text size="sm" c="dimmed">
                     This template has no sections yet.
                   </Text>
                 )}
@@ -157,7 +157,12 @@ function SectionRow({ section, isModule, labelIds, onLabels, matching }) {
   );
 
   return (
-    <Paper withBorder p="sm" radius="md" bg="dark.7">
+    <Paper
+      withBorder
+      p="sm"
+      radius="md"
+      bg="light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-7))"
+    >
       <Group justify="space-between" mb={section.tasks?.length || isModule ? 'xs' : 0}>
         <Text fw={600}>{section.name}</Text>
         <Badge size="xs" variant="light" color={isModule ? 'amber' : 'gray'}>
@@ -169,8 +174,8 @@ function SectionRow({ section, isModule, labelIds, onLabels, matching }) {
         <Stack gap={2} mb={isModule ? 'sm' : 0}>
           {section.tasks.map((t, i) => (
             <Group key={i} gap={6} wrap="nowrap">
-              <ListChecks size={13} color="var(--mantine-color-dark-2)" />
-              <Text size="sm" c="dark.1" truncate>
+              <ListChecks size={13} color="var(--mantine-color-dimmed)" />
+              <Text size="sm" truncate>
                 {t.title}
               </Text>
             </Group>
@@ -187,12 +192,12 @@ function SectionRow({ section, isModule, labelIds, onLabels, matching }) {
           />
           <Group gap={6} mt="xs" wrap="wrap">
             {matching.length === 0 ? (
-              <Text size="xs" c="dark.2">
+              <Text size="xs" c="dimmed">
                 No modules match yet — pick labels above.
               </Text>
             ) : (
               <>
-                <Text size="xs" c="dark.2">
+                <Text size="xs" c="dimmed">
                   Will add {injectedTasks} {injectedTasks === 1 ? 'task' : 'tasks'} from:
                 </Text>
                 {matching.map((m) => (
