@@ -40,6 +40,7 @@ async function seedProject() {
   const label = (await owner.post('/api/labels').send({ name: 'urgent', color: 'red' })).body;
   const statuses = (await owner.get('/api/statuses')).body;
   const doing = statuses.find((s) => s.key === 'doing');
+  const done = statuses.find((s) => s.is_done);
 
   const task = (
     await owner.post(`/api/projects/${project.id}/tasks`).send({
@@ -57,7 +58,7 @@ async function seedProject() {
   for (const title of ['SECRET_SUBTASK_A', 'SECRET_SUBTASK_B', 'SECRET_SUBTASK_C']) {
     const st = (await owner.post(`/api/tasks/${task.id}/subtasks`).send({ title })).body;
     if (title !== 'SECRET_SUBTASK_C')
-      await owner.patch(`/api/tasks/${task.id}/subtasks/${st.id}`).send({ done: true });
+      await owner.patch(`/api/tasks/${task.id}/subtasks/${st.id}`).send({ statusId: done.id });
   }
 
   return { owner, project, section, label, statuses, doing, task };
