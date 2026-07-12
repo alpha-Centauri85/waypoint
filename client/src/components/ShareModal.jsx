@@ -218,7 +218,12 @@ export default function ShareModal({ opened, project, onClose, onChanged }) {
                 Comments, activity and members stay private.
               </Text>
               {data.publicShare ? (
-                <Paper withBorder p="xs" radius="md" bg="dark.7">
+                <Paper
+                  withBorder
+                  p="xs"
+                  radius="md"
+                  bg="light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-7))"
+                >
                   <Group justify="space-between" wrap="nowrap">
                     <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
                       <Badge
