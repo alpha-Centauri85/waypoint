@@ -15,6 +15,7 @@ import {
   Select,
   Stack,
   Text,
+  Textarea,
   TextInput,
   Title,
 } from '@mantine/core';
@@ -122,6 +123,7 @@ export default function TaskList({ project, onTasksChanged }) {
   const [editingTask, setEditingTask] = useState(null);
   const [editingSectionId, setEditingSectionId] = useState(null);
   const [editingSectionName, setEditingSectionName] = useState('');
+  const [editingSectionDescription, setEditingSectionDescription] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [labelFilter, setLabelFilter] = useState([]); // label ids
   const [sortBy, setSortBy] = useState('default');
@@ -242,14 +244,16 @@ export default function TaskList({ project, onTasksChanged }) {
 
   async function saveSectionName() {
     const name = editingSectionName.trim();
+    const description = editingSectionDescription.trim();
     const id = editingSectionId;
     setEditingSectionId(null);
     if (!name) return;
     try {
-      await updateSection(project.id, id, { name });
+      // null clears the description; the backend merges by key presence.
+      await updateSection(project.id, id, { name, description: description || null });
       refresh();
     } catch (err) {
-      notifyError(err, 'Could not rename section');
+      notifyError(err, 'Could not update section');
     }
   }
 
@@ -560,86 +564,104 @@ export default function TaskList({ project, onTasksChanged }) {
                 }}
               >
                 {editingSectionId === section.id ? (
-                  <Group gap="xs" wrap="nowrap">
-                    <TextInput
-                      size="sm"
-                      style={{ flex: 1 }}
-                      value={editingSectionName}
-                      onChange={(e) => setEditingSectionName(e.currentTarget.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') saveSectionName();
-                        if (e.key === 'Escape') setEditingSectionId(null);
-                      }}
-                      autoFocus
-                    />
-                    <ActionIcon
-                      variant="light"
-                      aria-label="Save section name"
-                      onClick={saveSectionName}
-                    >
-                      <Check size={16} />
-                    </ActionIcon>
-                    <ActionIcon
-                      variant="subtle"
-                      color="gray"
-                      aria-label="Cancel"
-                      onClick={() => setEditingSectionId(null)}
-                    >
-                      <X size={16} />
-                    </ActionIcon>
-                  </Group>
-                ) : (
-                  <Group
-                    justify="space-between"
-                    gap="xs"
-                    {...sectionDragProps(section)}
-                    style={{
-                      borderBottom:
-                        draggedSectionId !== null && dropZoneSectionId === section.id
-                          ? '2px solid var(--mantine-primary-color-filled)'
-                          : '1px solid var(--mantine-color-dark-4)',
-                      paddingBottom: 6,
-                    }}
-                  >
-                    <Group gap="xs">
-                      {reorderEnabled && (
-                        <GripVertical
-                          size={15}
-                          aria-label="Drag section"
-                          style={{ cursor: 'grab', opacity: 0.5, flexShrink: 0 }}
-                        />
-                      )}
-                      <Text fw={700} tt="uppercase" size="sm" style={{ letterSpacing: '0.04em' }}>
-                        {section.name}
-                      </Text>
-                      <Badge size="sm" variant="light" color="gray">
-                        {items.length}
-                      </Badge>
-                    </Group>
-                    <Group gap={4}>
+                  <Stack gap={6}>
+                    <Group gap="xs" wrap="nowrap">
+                      <TextInput
+                        size="sm"
+                        style={{ flex: 1 }}
+                        value={editingSectionName}
+                        onChange={(e) => setEditingSectionName(e.currentTarget.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveSectionName();
+                          if (e.key === 'Escape') setEditingSectionId(null);
+                        }}
+                        autoFocus
+                      />
+                      <ActionIcon
+                        variant="light"
+                        aria-label="Save section"
+                        onClick={saveSectionName}
+                      >
+                        <Check size={16} />
+                      </ActionIcon>
                       <ActionIcon
                         variant="subtle"
                         color="gray"
-                        size="sm"
-                        aria-label="Rename section"
-                        onClick={() => {
-                          setEditingSectionId(section.id);
-                          setEditingSectionName(section.name);
-                        }}
+                        aria-label="Cancel"
+                        onClick={() => setEditingSectionId(null)}
                       >
-                        <Pencil size={14} />
-                      </ActionIcon>
-                      <ActionIcon
-                        variant="subtle"
-                        color="red"
-                        size="sm"
-                        aria-label="Delete section"
-                        onClick={() => removeSection(section)}
-                      >
-                        <Trash2 size={14} />
+                        <X size={16} />
                       </ActionIcon>
                     </Group>
-                  </Group>
+                    <Textarea
+                      size="xs"
+                      placeholder="Add a description…"
+                      value={editingSectionDescription}
+                      onChange={(e) => setEditingSectionDescription(e.currentTarget.value)}
+                      autosize
+                      minRows={2}
+                    />
+                  </Stack>
+                ) : (
+                  <>
+                    <Group
+                      justify="space-between"
+                      gap="xs"
+                      {...sectionDragProps(section)}
+                      style={{
+                        borderBottom:
+                          draggedSectionId !== null && dropZoneSectionId === section.id
+                            ? '2px solid var(--mantine-primary-color-filled)'
+                            : '1px solid var(--mantine-color-dark-4)',
+                        paddingBottom: 6,
+                      }}
+                    >
+                      <Group gap="xs">
+                        {reorderEnabled && (
+                          <GripVertical
+                            size={15}
+                            aria-label="Drag section"
+                            style={{ cursor: 'grab', opacity: 0.5, flexShrink: 0 }}
+                          />
+                        )}
+                        <Text fw={700} tt="uppercase" size="sm" style={{ letterSpacing: '0.04em' }}>
+                          {section.name}
+                        </Text>
+                        <Badge size="sm" variant="light" color="gray">
+                          {items.length}
+                        </Badge>
+                      </Group>
+                      <Group gap={4}>
+                        <ActionIcon
+                          variant="subtle"
+                          color="gray"
+                          size="sm"
+                          aria-label="Rename section"
+                          onClick={() => {
+                            setEditingSectionId(section.id);
+                            setEditingSectionName(section.name);
+                            setEditingSectionDescription(section.description ?? '');
+                          }}
+                        >
+                          <Pencil size={14} />
+                        </ActionIcon>
+                        <ActionIcon
+                          variant="subtle"
+                          color="red"
+                          size="sm"
+                          aria-label="Delete section"
+                          onClick={() => removeSection(section)}
+                        >
+                          <Trash2 size={14} />
+                        </ActionIcon>
+                      </Group>
+                    </Group>
+                    {section.description && (
+                      <Text size="sm" c="dimmed" pl="xs">
+                        {section.description}
+                      </Text>
+                    )}
+                  </>
                 )}
 
                 {items.map(renderTask)}
