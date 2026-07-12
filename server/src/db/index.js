@@ -34,6 +34,9 @@ ensureColumn('tasks', 'priority', 'INTEGER NOT NULL DEFAULT 0');
 // section_id is added after `sections` is created by the schema above, so the
 // referenced table exists when the column is added to an older tasks table.
 ensureColumn('tasks', 'section_id', 'INTEGER REFERENCES sections(id) ON DELETE SET NULL');
+// Optional free-text description shown under a section's header (mirrors
+// tasks.notes / projects.description).
+ensureColumn('sections', 'description', 'TEXT');
 // Custom-status FK. Backfilled from the legacy `status` text by models/statuses.js
 // when a user's default statuses are seeded.
 ensureColumn('tasks', 'status_id', 'INTEGER REFERENCES statuses(id)');
