@@ -1,30 +1,42 @@
 import { Group, Text } from '@mantine/core';
 
-// The Waypoint mark: two forward slashes accelerating into a teal "play"
-// triangle — motion toward a destination. Recreated as inline SVG so it scales
-// crisply and inherits the brand gradient. `size` is the mark height in px.
+// The official Waypoint mark: two angled ink bars accelerating into a
+// teal→blue gradient arrow — motion toward a destination. Inline SVG (from the
+// brand source) so it scales crisply and stays offline. The two ink bars use
+// `currentColor`, so they flip with the colour scheme (navy on light, white on
+// dark); the gradient arrow stays fixed to the brand palette. `size` is the
+// mark height in px; the tight viewBox keeps the lockup balanced.
 export function LogoMark({ size = 28 }) {
   return (
     <svg
-      width={(size * 74) / 40}
+      width={(size * 125) / 66}
       height={size}
-      viewBox="0 0 74 40"
+      viewBox="36 67 125 66"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
       style={{ display: 'block' }}
     >
       <defs>
-        <linearGradient id="wp-mark" x1="34" y1="6" x2="70" y2="34" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#5FDCC6" />
-          <stop offset="1" stopColor="#14B8A6" />
+        <linearGradient id="wp-mark" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#19D3C5" />
+          <stop offset="100%" stopColor="#228BE6" />
         </linearGradient>
       </defs>
-      {/* two accelerating slashes */}
-      <path d="M6 34 L22 6 H31 L15 34 Z" fill="currentColor" opacity="0.55" />
-      <path d="M20 34 L36 6 H45 L29 34 Z" fill="currentColor" />
-      {/* play triangle */}
-      <path d="M44 6 L70 20 L44 34 Z" fill="url(#wp-mark)" />
+      {/* two accelerating ink bars */}
+      <path
+        d="M 68.85 75.51 Q 72.60 69.60 79.60 69.60 L 87.50 69.60 Q 94.50 69.60 90.74 75.50 L 59.66 124.30 Q 55.90 130.20 48.90 130.20 L 41.10 130.20 Q 34.10 130.20 37.85 124.29 Z"
+        fill="currentColor"
+      />
+      <path
+        d="M 101.24 75.50 Q 105.00 69.60 112.00 69.60 L 119.80 69.60 Q 126.80 69.60 123.05 75.51 L 92.05 124.29 Q 88.30 130.20 81.30 130.20 L 73.40 130.20 Q 66.40 130.20 70.16 124.30 Z"
+        fill="currentColor"
+      />
+      {/* gradient arrow */}
+      <path
+        d="M 132.71 76.35 Q 137.00 69.60 142.65 75.27 L 158.65 91.33 Q 164.30 97.00 157.16 100.60 L 105.64 126.60 Q 98.50 130.20 102.79 123.45 Z"
+        fill="url(#wp-mark)"
+      />
     </svg>
   );
 }
