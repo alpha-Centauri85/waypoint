@@ -23,6 +23,8 @@ import notificationsRouter from './routes/notifications.js';
 import commentsRouter from './routes/comments.js';
 import membersRouter from './routes/members.js';
 import invitesRouter from './routes/invites.js';
+import publicRouter from './routes/public.js';
+import { publicShareLimiter } from './middleware/rateLimit.js';
 
 const SqliteStore = SqliteStoreFactory(session);
 
@@ -100,6 +102,11 @@ export function createApp() {
   app.use('/api/projects/:projectId/tasks', tasksRouter);
   app.use('/api/tasks/:taskId/subtasks', subtasksRouter);
   app.use('/api/tasks/:taskId/comments', commentsRouter);
+  // Public, no-login, read-only share links (roadmap 29). Mounted WITHOUT
+  // requireAuth (the only unauthenticated read path) and rate-limited. Kept
+  // before the /api 404 so a bad token → 404 (and any non-GET verb falls through
+  // to the same 404, never a mutation).
+  app.use('/api/public', publicShareLimiter, publicRouter);
 
   // 404 for unknown API routes (before the SPA fallback so /api/* never returns
   // index.html).

@@ -23,3 +23,12 @@ export const authLimiter = makeRateLimiter({
   message: 'Too many attempts, please try again later',
   skip: () => config.nodeEnv === 'test',
 });
+
+// Guards the unauthenticated public-share read endpoint (its only abuse surface
+// is anonymous token guessing / scraping). Skipped under test like authLimiter.
+export const publicShareLimiter = makeRateLimiter({
+  windowMs: 60 * 1000, // 1 min
+  max: 60,
+  message: 'Too many requests, please try again later',
+  skip: () => config.nodeEnv === 'test',
+});

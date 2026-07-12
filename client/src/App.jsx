@@ -24,9 +24,12 @@ import SettingsScreen from './components/SettingsScreen.jsx';
 import TemplatesPage from './components/TemplatesPage.jsx';
 import ModulesPage from './components/ModulesPage.jsx';
 import InviteAccept from './components/InviteAccept.jsx';
+import PublicProject from './components/PublicProject.jsx';
 
 // An /invite/:token deep link (SPA fallback serves index.html for it).
 const inviteToken = () => window.location.pathname.match(/^\/invite\/([^/]+)$/)?.[1] ?? null;
+// A /share/:token public no-login view (SPA fallback serves index.html for it).
+const shareToken = () => window.location.pathname.match(/^\/share\/([^/]+)$/)?.[1] ?? null;
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -34,13 +37,16 @@ export default function App() {
   const [view, setView] = useState('dashboard'); // dashboard | settings | templates | modules
   const [focusProjectId, setFocusProjectId] = useState(null); // project to select after nav
   const [invite, setInvite] = useState(inviteToken); // token from /invite/:token, or null
+  const [share] = useState(shareToken); // token from /share/:token (public no-login view), or null
 
   useEffect(() => {
+    // The public share view is fully unauthenticated — don't probe the session.
+    if (share) return;
     getMe()
       .then(setUser)
       .catch(() => setUser(null))
       .finally(() => setLoading(false));
-  }, []);
+  }, [share]);
 
   async function handleLogout() {
     await logout();
@@ -60,6 +66,16 @@ export default function App() {
     setInvite(null);
     setView('dashboard');
     if (projectId != null) setFocusProjectId(projectId);
+  }
+
+  // Public no-login share view: short-circuit BEFORE the auth gate so we never
+  // call getMe or render any signed-in shell / edit control.
+  if (share) {
+    return (
+      <MantineProvider theme={theme} forceColorScheme="dark">
+        <PublicProject token={share} />
+      </MantineProvider>
+    );
   }
 
   return (
