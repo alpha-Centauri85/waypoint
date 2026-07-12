@@ -299,3 +299,12 @@ channel over the notifications rows, which also unblocks invite emails). Other
 candidates: per-task assignment (to target reminders/activity at a person), step 11
 (optimistic UI), and smaller polish (template-editor reorder, board swimlanes,
 jump-to-task from search).
+
+**Spec'd next round (Phase 5, 2026-07-12; sub-agent reviewed, decisions locked):**
+section descriptions (27), subtask statuses reusing the per-user `statuses` workflow
+(28), a public **no-login view-only** share link with a subtask progress count (29),
+brand-asset import from the design board — logos/favicons/light-palette tokens (30),
+and **light mode** (31, dark stays default, opt-in toggle persisted on `users.theme`,
+teal primary kept). Build order: 27 → 28 → 29 → (30 + 31). Optimistic UI (11)
+**deferred** — a latency benchmark showed all mutations <20ms server-side. See
+ROADMAP Phase 5 for the full spec.
