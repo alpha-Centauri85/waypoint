@@ -138,12 +138,24 @@ test('subtask progress is a correct count, never titles', async () => {
   expect(task.subtaskDone).toBe(2);
 });
 
-test('statuses and labels resolve against the OWNER', async () => {
-  const { owner, project, label, statuses } = await seedProject();
+test('statuses are minimised to those used by visible tasks (no cross-project leak)', async () => {
+  const { owner, project, label, statuses, doing } = await seedProject();
   const token = await createLink(owner, project.id);
   const body = (await request(app).get(`/api/public/${token}`)).body;
 
-  expect(body.statuses.map((s) => s.id).sort()).toEqual(statuses.map((s) => s.id).sort());
+  const returnedIds = body.statuses.map((s) => s.id);
+  // (a) the status actually used by a visible task IS present.
+  expect(returnedIds).toContain(doing.id);
+
+  // (b) owner statuses that NO visible task uses are NOT present. Because statuses
+  //     are per-user and shared across all the owner's projects, an unused one could
+  //     name work from a different, private project -- it must never leak here. The
+  //     seed's single task uses only 'doing', so the other defaults are unused.
+  const unused = statuses.filter((s) => s.id !== doing.id);
+  expect(unused.length).toBeGreaterThan(0);
+  for (const s of unused) expect(returnedIds).not.toContain(s.id);
+
+  // Labels still resolve against the OWNER.
   expect(body.tasks[0].labels).toEqual([{ id: label.id, name: 'urgent', color: 'red' }]);
 });
 

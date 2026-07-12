@@ -60,10 +60,23 @@ const sectionsForProject = db.prepare(
   'SELECT id, name, position FROM sections WHERE project_id = ? ORDER BY position, created_at',
 );
 
-// The OWNER's workflow statuses. NO user_id, NO key.
-const statusesForOwner = db.prepare(
-  'SELECT id, name, color, position, is_done FROM statuses WHERE user_id = ? ORDER BY position',
-);
+// The statuses actually used by the visible tasks. Scoped to the OWNER (statuses
+// are per-user) AND to the set of status_ids present in the returned tasks, so a
+// status name only ever used in a DIFFERENT private project can't leak through a
+// public link. Mirrors how labels are minimised. NO user_id, NO key; ordered by
+// position; empty set -> empty array (never errors).
+function statusesForTasks(ownerId, statusIds) {
+  if (!statusIds.length) return [];
+  const placeholders = statusIds.map(() => '?').join(',');
+  return db
+    .prepare(
+      `SELECT id, name, color, position, is_done
+       FROM statuses
+       WHERE user_id = ? AND id IN (${placeholders})
+       ORDER BY position`,
+    )
+    .all(ownerId, ...statusIds);
+}
 
 // Tasks: whitelisted display fields only (no notes, no created_at). Aliased to
 // the client's camelCase contract.
@@ -123,10 +136,13 @@ export function getPublicProject(token) {
   if (!ctx) return null;
 
   const sections = sectionsForProject.all(ctx.project_id);
-  const statuses = statusesForOwner.all(ctx.owner_id);
   const tasks = tasksForProject.all(ctx.project_id);
 
   const taskIds = tasks.map((t) => t.id);
+  // Only the statuses referenced by the returned tasks (distinct status_ids),
+  // never the owner's full workflow -- see statusesForTasks.
+  const statusIds = [...new Set(tasks.map((t) => t.statusId).filter((id) => id != null))];
+  const statuses = statusesForTasks(ctx.owner_id, statusIds);
   const labels = labelsByTask(taskIds);
   const counts = subtaskCountsByTask(taskIds);
   for (const t of tasks) {
