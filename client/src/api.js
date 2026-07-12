@@ -115,8 +115,8 @@ export const deleteTemplate = (id) => request(`/api/templates/${id}`, { method: 
 
 // Sections (task groupings within a project)
 export const listSections = (projectId) => request(`/api/projects/${projectId}/sections`);
-export const createSection = (projectId, name) =>
-  request(`/api/projects/${projectId}/sections`, { method: 'POST', body: { name } });
+export const createSection = (projectId, name, extra = {}) =>
+  request(`/api/projects/${projectId}/sections`, { method: 'POST', body: { name, ...extra } });
 export const updateSection = (projectId, sectionId, fields) =>
   request(`/api/projects/${projectId}/sections/${sectionId}`, { method: 'PATCH', body: fields });
 export const deleteSection = (projectId, sectionId) =>

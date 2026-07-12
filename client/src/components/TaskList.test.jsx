@@ -263,6 +263,42 @@ test('dragging a task into another section PATCHes its sectionId and reorders', 
   });
 });
 
+test('a section description is shown, and editing it PATCHes name + description', async () => {
+  const sections = [{ id: 10, name: 'Alpha', description: 'Kickoff notes', position: 0 }];
+  const calls = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((url, opts = {}) => {
+      calls.push({ url: String(url), opts });
+      const u = String(url);
+      if (u.includes('/api/statuses')) return jsonResponse(200, STATUSES);
+      if (u.includes('/subtasks')) return jsonResponse(200, []);
+      if (u.includes('/sections')) return jsonResponse(200, sections);
+      if (u.endsWith('/tasks')) return jsonResponse(200, []);
+      return jsonResponse(200, []);
+    }),
+  );
+
+  renderWithProviders(<TaskList project={{ id: 1, name: 'P' }} />);
+
+  // The description shows under the section header when non-empty.
+  expect(await screen.findByText('Kickoff notes')).toBeInTheDocument();
+
+  // Open the inline editor and change both fields.
+  fireEvent.click(screen.getByLabelText('Rename section'));
+  const nameInput = screen.getByDisplayValue('Alpha');
+  fireEvent.change(nameInput, { target: { value: 'Beta' } });
+  const descriptionInput = screen.getByDisplayValue('Kickoff notes');
+  fireEvent.change(descriptionInput, { target: { value: 'Updated notes' } });
+  fireEvent.click(screen.getByLabelText('Save section'));
+
+  await waitFor(() => {
+    const patch = calls.find((c) => c.opts.method === 'PATCH' && c.url.endsWith('/sections/10'));
+    expect(patch).toBeTruthy();
+    expect(JSON.parse(patch.opts.body)).toEqual({ name: 'Beta', description: 'Updated notes' });
+  });
+});
+
 test('clicking a task status opens a menu to pick any status', async () => {
   const task = { id: 5, title: 'Pick me', status_id: 101, due_date: null, notes: null, labels: [] };
   const calls = [];
