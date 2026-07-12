@@ -92,7 +92,7 @@ export default function SearchBar({ onSelectProject }) {
                     </Text>
                   )}
                 </Group>
-                <Text size="xs" c="dark.2" style={{ flexShrink: 0 }}>
+                <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
                   {t.project_name}
                 </Text>
               </Group>
@@ -110,7 +110,7 @@ function GroupLabel({ children }) {
       size="xs"
       fw={700}
       tt="uppercase"
-      c="dark.2"
+      c="dimmed"
       px="xs"
       pt={6}
       pb={2}
@@ -129,7 +129,9 @@ function ResultRow({ onClick, children }) {
       display="block"
       w="100%"
       style={{ borderRadius: 8 }}
-      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--mantine-color-dark-5)')}
+      onMouseEnter={(e) =>
+        (e.currentTarget.style.backgroundColor = 'var(--mantine-color-default-hover)')
+      }
       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
     >
       {children}

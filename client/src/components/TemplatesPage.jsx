@@ -68,8 +68,8 @@ export default function TemplatesPage({ onInstantiated }) {
         </Group>
       ) : templates.length === 0 ? (
         <Stack align="center" gap="xs" py="xl">
-          <LayoutTemplate size={40} color="var(--mantine-color-dark-3)" />
-          <Text c="dark.2" ta="center">
+          <LayoutTemplate size={40} color="var(--mantine-color-dimmed)" />
+          <Text c="dimmed" ta="center">
             No templates yet. Create one, or open a project and choose <b>Save as template</b>.
           </Text>
         </Stack>

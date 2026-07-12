@@ -417,7 +417,7 @@ export default function TaskList({ project, onTasksChanged }) {
         <div>
           <Title order={2}>{project.name}</Title>
           {project.description && (
-            <Text c="dark.2" mt={4}>
+            <Text c="dimmed" mt={4}>
               {project.description}
             </Text>
           )}
@@ -426,10 +426,10 @@ export default function TaskList({ project, onTasksChanged }) {
           {tasks.length > 0 && (
             <Stack gap={4} w={180} style={{ flexShrink: 0 }}>
               <Group justify="space-between" gap="xs">
-                <Text size="xs" c="dark.2">
+                <Text size="xs" c="dimmed">
                   {doneCount} of {tasks.length} done
                 </Text>
-                <Text size="xs" fw={600} c={pct === 100 ? 'teal.4' : 'dark.1'}>
+                <Text size="xs" fw={600} c={pct === 100 ? 'teal' : undefined}>
                   {pct}%
                 </Text>
               </Group>
@@ -597,7 +597,7 @@ export default function TaskList({ project, onTasksChanged }) {
                       borderBottom:
                         draggedSectionId !== null && dropZoneSectionId === section.id
                           ? '2px solid var(--mantine-primary-color-filled)'
-                          : '1px solid var(--mantine-color-dark-4)',
+                          : '1px solid var(--mantine-color-default-border)',
                       paddingBottom: 6,
                     }}
                   >
@@ -644,7 +644,7 @@ export default function TaskList({ project, onTasksChanged }) {
 
                 {items.map(renderTask)}
                 {!items.length && (
-                  <Text size="sm" c="dark.3" pl="xs">
+                  <Text size="sm" c="dimmed" pl="xs">
                     No tasks in this section.
                   </Text>
                 )}
@@ -674,7 +674,7 @@ export default function TaskList({ project, onTasksChanged }) {
                     fw={700}
                     tt="uppercase"
                     size="sm"
-                    c="dark.2"
+                    c="dimmed"
                     style={{ letterSpacing: '0.04em' }}
                   >
                     No section
@@ -686,12 +686,12 @@ export default function TaskList({ project, onTasksChanged }) {
           })()}
 
           {!tasks.length && (
-            <Text c="dark.2" py="sm">
+            <Text c="dimmed" py="sm">
               No tasks yet — add your first one above.
             </Text>
           )}
           {tasks.length > 0 && !visibleTasks.length && (
-            <Text c="dark.2" py="sm">
+            <Text c="dimmed" py="sm">
               No tasks match this filter.
             </Text>
           )}

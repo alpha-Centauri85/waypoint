@@ -72,7 +72,7 @@ export default function SaveAsTemplateModal({ opened, projectId, projectName, on
     <Modal opened={opened} onClose={onClose} title="Save as template" centered>
       <form onSubmit={submit}>
         <Stack>
-          <Text size="sm" c="dark.2">
+          <Text size="sm" c="dimmed">
             Captures this project’s sections and tasks as a reusable template.
           </Text>
 

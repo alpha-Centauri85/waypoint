@@ -1,13 +1,30 @@
 /* Component styling is handled by Mantine (imported in main.jsx). Keep this
    file for small app-wide tweaks only. */
 
-body {
-  margin: 0;
-  background-color: #0e1621; /* brand navy, avoids a white flash before Mantine loads */
+/* Default to the dark scheme before Mantine sets the attribute, so the initial
+   paint matches the app's dark default (no white flash). `color-scheme` also
+   drives the native light-dark() colours used throughout the theme. */
+:root {
+  color-scheme: dark;
+}
+:root[data-mantine-color-scheme='light'] {
+  color-scheme: light;
+  /* Brand light surfaces: a near-white body so white cards stand out. */
+  --mantine-color-body: #f1f3f5;
+  --mantine-color-default-border: #e3e8ef;
+}
+:root[data-mantine-color-scheme='dark'] {
+  color-scheme: dark;
 }
 
-/* Subtle scrollbars that fit the dark theme. */
+body {
+  margin: 0;
+  /* light: near-white; dark: brand navy — avoids a wrong-colour flash. */
+  background-color: light-dark(#f1f3f5, #0e1621);
+}
+
+/* Subtle scrollbars that fit either scheme. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #2c3e52 transparent;
+  scrollbar-color: light-dark(#c7d0dc, #2c3e52) transparent;
 }

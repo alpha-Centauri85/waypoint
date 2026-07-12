@@ -30,10 +30,12 @@ export function LogoMark({ size = 28 }) {
 }
 
 // Mark + wordmark lockup. `color` sets the wordmark colour (mark uses it too).
+// Defaults to the scheme-aware text colour so it stays legible in both light
+// and dark; pass an explicit colour (e.g. white) on fixed-dark hero panels.
 export default function Logo({
   size = 28,
   withWordmark = true,
-  color = 'var(--mantine-color-white)',
+  color = 'var(--mantine-color-text)',
 }) {
   return (
     <Group gap="sm" wrap="nowrap" align="center" style={{ color }}>

@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   email         TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
+  theme         TEXT NOT NULL DEFAULT 'dark',
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
