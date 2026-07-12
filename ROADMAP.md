@@ -242,20 +242,27 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
       editor, reuse a module across templates, and carry labels/due dates into
       blueprints.
 
-## Phase 5 — Planned feature round (spec'd 2026-07-12)
+## Phase 5 — Feature round (shipped 2026-07-12)
 
-Scoped with the user and reviewed by parallel sub-agents against the live code;
-build order is dependency-aware and the decisions below are locked. Light mode is
-deliberately **last** so its `dark.N` sweep also covers the new components added by
-27–30. Optimistic UI (11) is **deferred** on benchmark evidence (see item 11).
-**Build order:** 27 → 28 → 29 → (30 + 31 together).
+Scoped with the user and reviewed by parallel sub-agents against the live code, then
+built by parallel agents (one worktree/PR each) and code-reviewed before merge. Build
+order was dependency-aware; light mode ran last so its `dark.N` sweep also covered the
+components added by 27–30. **All items below are merged to main** (verified green: 116
+tests, `dark.N` gate clean). Optimistic UI (11) was **deferred** on benchmark evidence
+(see item 11).
 
-- [ ] **27. Section descriptions** (S) — add an optional `description` to
+_Cross-feature gotcha caught in review:_ 28 made subtask `done` derived from status and
+dropped `done` as a PATCH input, which broke 29's test that seeded done subtasks via
+`PATCH {done:true}`; fixed by seeding via a done `statusId` — the feature was correct,
+only the test was stale. (A reminder that integrations break at the seams, not the happy
+path.)
+
+- [x] **27. Section descriptions** (S) — _Shipped (PR #3)._ add an optional `description` to
       `sections` (idempotent `ensureColumn`, mirrors `tasks.notes`/`projects.description`),
       a zod field, a model tweak, and one editor field + display line under the
       section header in `TaskList.jsx`. Task notes already exist — this is sections
       only. Template carry-through (`template_sections`) is **out of scope**.
-- [ ] **28. Subtask statuses** (M) — replace the subtask done/checkbox with a
+- [x] **28. Subtask statuses** (M) — _Shipped (PR #4)._ replace the subtask done/checkbox with a
       status, **reusing the per-user `statuses` workflow** (not a new set). Add
       `subtasks.status_id` (FK) via `ensureColumn`; idempotent, **owner-scoped**
       backfill (done=1 → owner's `is_done` status, done=0 → first status, only where
@@ -266,7 +273,7 @@ deliberately **last** so its `dark.N` sweep also covers the new components added
       default status. Extract a shared `StatusPicker` from `TaskCard` and reuse it in
       `Subtasks.jsx` (resolve statuses against the owner via `ProjectStatusesProvider`).
       Subtask completion stays **independent** of task/project progress rollups for v1.
-- [ ] **29. Public view-only share link** (M) — an owner-generated, **no-login**,
+- [x] **29. Public view-only share link** (M) — _Shipped (PR #2); status list minimised to statuses used by visible tasks (review fix)._ an owner-generated, **no-login**,
       read-only project link, distinct from the member-invite tokens. New
       `public_shares` table (one link/project, `randomBytes(24)` token,
       delete-on-revoke); a single **unauthenticated** `GET /api/public/:token`
@@ -280,7 +287,7 @@ deliberately **last** so its `dark.N` sweep also covers the new components added
       `/share/:token` route in `App.jsx` that short-circuits before the auth gate and
       renders a standalone read-only `PublicProject` page (no shell/edit UI); owner
       generates/revokes it in `ShareModal`.
-- [ ] **30. Brand asset import** (S–M) — pull the finished Waypoint brand kit from
+- [~] **30. Brand asset import** (S–M) — _Shipped (PR #8): favicon (SVG) + `app-icon.svg` wired into `index.html`, and the official Waypoint wordmark in `Logo.jsx` (ink bars flip via `currentColor`, gradient arrow fixed). Deferred: legacy `.ico`/PNG raster icons + the full PWA size set (SVG favicon covers modern browsers)._ pull the finished Waypoint brand kit from
       the design board (claude.ai/design project "Waypoint Design Board"): adopt the
       official logo SVGs into `Logo.jsx` (light/dark wordmark + icon variants),
       install the real favicon/PWA icon set into the client, and use the brand token
@@ -288,7 +295,7 @@ deliberately **last** so its `dark.N` sweep also covers the new components added
       (31). **Keep the app's self-hosted fonts** — do not adopt the board's CDN font
       imports (offline requirement). Source PNG uploads are mood-board images, not app
       assets.
-- [ ] **31. Light mode** (L) — add a light theme; **dark stays the default**, light
+- [x] **31. Light mode** (L) — _Shipped (PR #6): `users.theme` persistence + header toggle, full `dark.N` sweep (gate clean), verified in-browser in both schemes; the public `/share` view stays forced-dark. NB: first build (PR #5) forked from a stale pre-merge main and was rebuilt on current main + re-swept — always `git fetch` after gh merges before spawning worktree agents._ add a light theme; **dark stays the default**, light
       is an opt-in manual toggle in the header user menu, **persisted server-side on
       `users.theme`** (via `/auth/me` + a `PATCH`) so it follows the user across
       devices. Keep the shipped **teal primary + amber secondary** (not the brand
@@ -309,10 +316,11 @@ origin serving (12) + backups (15), and Phase 4 labels+priority (16), sections
 statuses (23) + Settings (22), activity log + comments (18), project sharing (19),
 and in-app due-date reminders (20, in-app increment).
 
-**Spec'd and queued (Phase 5, 2026-07-12):** section descriptions (27), subtask
-statuses (28), a public no-login view-only share link (29), brand-asset import (30),
-and light mode (31) — reviewed by sub-agents, build order + decisions locked. See
-Phase 5 above. (Email delivery for reminders/invites is being built separately.)
+**Shipped (Phase 5, 2026-07-12):** section descriptions (27), subtask statuses (28),
+a public no-login view-only share link (29), brand-asset import (30, favicon + wordmark;
+raster icons deferred), and light mode (31) — all merged to main (green: 116 tests).
+See Phase 5 above. Optimistic UI (11) deferred on benchmark evidence. (Email delivery
+for reminders/invites is being built separately.)
 
 **Next candidates:**
 
