@@ -1,8 +1,9 @@
-import { ActionIcon, Badge, ColorSwatch, Group, Menu, Paper, Text, Tooltip } from '@mantine/core';
-import { CalendarClock, Check, FileText, Flag, GripVertical, Pencil, Trash2 } from 'lucide-react';
+import { ActionIcon, Badge, Group, Paper, Text, Tooltip } from '@mantine/core';
+import { CalendarClock, FileText, Flag, GripVertical, Pencil, Trash2 } from 'lucide-react';
 import dayjs from 'dayjs';
 import { PRIORITY_META } from '../priority.js';
 import { useStatuses } from '../statuses.jsx';
+import StatusPicker from './StatusPicker.jsx';
 import Subtasks from './Subtasks.jsx';
 
 // A task is overdue when its due date is in the past and its status isn't terminal.
@@ -22,19 +23,8 @@ export default function TaskCard({
   onDelete,
   canEdit = true,
 }) {
-  const { statuses, statusById } = useStatuses();
+  const { statusById } = useStatuses();
   const status = statusById(task.status_id);
-  const statusBadge = (
-    <Badge
-      color={status.color}
-      variant={status.is_done ? 'filled' : 'light'}
-      w={110}
-      aria-label={canEdit ? `Status: ${status.name} — change` : `Status: ${status.name}`}
-      style={{ cursor: canEdit ? 'pointer' : 'default', flexShrink: 0 }}
-    >
-      {status.name}
-    </Badge>
-  );
   return (
     <Paper
       withBorder
@@ -61,32 +51,7 @@ export default function TaskCard({
               />
             </Tooltip>
           )}
-          {canEdit ? (
-            <Menu shadow="md" width={180} position="bottom-start" withinPortal>
-              <Menu.Target>{statusBadge}</Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Label>Set status</Menu.Label>
-                {statuses.map((s) => (
-                  <Menu.Item
-                    key={s.id}
-                    leftSection={
-                      <ColorSwatch
-                        color={`var(--mantine-color-${s.color}-6)`}
-                        size={12}
-                        withShadow={false}
-                      />
-                    }
-                    rightSection={s.id === task.status_id ? <Check size={14} /> : null}
-                    onClick={() => onSetStatus(s.id)}
-                  >
-                    {s.name}
-                  </Menu.Item>
-                ))}
-              </Menu.Dropdown>
-            </Menu>
-          ) : (
-            statusBadge
-          )}
+          <StatusPicker statusId={task.status_id} onChange={onSetStatus} canEdit={canEdit} />
           <Text truncate>{task.title}</Text>
           {task.priority > 0 && (
             <Tooltip label={`${PRIORITY_META[task.priority].label} priority`}>

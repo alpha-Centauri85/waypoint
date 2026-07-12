@@ -186,10 +186,17 @@ CREATE TABLE IF NOT EXISTS subtasks (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   task_id    INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
   title      TEXT NOT NULL,
+  -- Subtasks share the task workflow: status_id points at the project OWNER's
+  -- per-user statuses (like tasks.status_id). `done` is kept as a derived mirror
+  -- of the chosen status's is_done (for backups/templates). deleteStatus
+  -- reassigns subtasks to a fallback, so no ON DELETE clause is needed.
+  status_id  INTEGER REFERENCES statuses(id),
   done       INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_subtasks_task ON subtasks(task_id);
+-- idx_subtasks_status is created in db/index.js after status_id is ensured, so it
+-- works on databases whose subtasks table predates the column.
 
 -- Activity log: an append-only trail of what happened in a project (task/project
 -- created, status changed, etc.). Summaries are built at write time and stored
