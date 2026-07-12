@@ -3,14 +3,16 @@ import { db } from '../db/index.js';
 // Sections group tasks within a project. Every read/write is scoped by
 // project_id (the caller authorizes the project first, like tasks do).
 const insert = db.prepare(
-  `INSERT INTO sections (project_id, name, position)
-   VALUES (?, ?, (SELECT COALESCE(MAX(position) + 1, 0) FROM sections WHERE project_id = ?))`,
+  `INSERT INTO sections (project_id, name, description, position)
+   VALUES (?, ?, ?, (SELECT COALESCE(MAX(position) + 1, 0) FROM sections WHERE project_id = ?))`,
 );
 const listByProject = db.prepare(
   'SELECT * FROM sections WHERE project_id = ? ORDER BY position, created_at',
 );
 const byId = db.prepare('SELECT * FROM sections WHERE id = ? AND project_id = ?');
-const update = db.prepare('UPDATE sections SET name = ? WHERE id = ? AND project_id = ?');
+const update = db.prepare(
+  'UPDATE sections SET name = ?, description = ? WHERE id = ? AND project_id = ?',
+);
 const del = db.prepare('DELETE FROM sections WHERE id = ? AND project_id = ?');
 
 const projectSectionIds = db.prepare('SELECT id FROM sections WHERE project_id = ?');
@@ -19,8 +21,8 @@ const applyOrder = db.transaction((projectId, orderedIds) => {
   orderedIds.forEach((id, index) => setPosition.run(index, id, projectId));
 });
 
-export function createSection(projectId, { name }) {
-  const { lastInsertRowid } = insert.run(projectId, name, projectId);
+export function createSection(projectId, { name, description = null }) {
+  const { lastInsertRowid } = insert.run(projectId, name, description, projectId);
   return byId.get(lastInsertRowid, projectId);
 }
 
@@ -31,7 +33,12 @@ export function listSections(projectId) {
 export function updateSection(id, projectId, fields) {
   const current = byId.get(id, projectId);
   if (!current) return null;
-  update.run('name' in fields ? fields.name : current.name, id, projectId);
+  update.run(
+    'name' in fields ? fields.name : current.name,
+    'description' in fields ? fields.description : current.description,
+    id,
+    projectId,
+  );
   return byId.get(id, projectId);
 }
 
