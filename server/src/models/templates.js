@@ -3,7 +3,7 @@ import { createProject, getProject } from './projects.js';
 import { createSection, listSections } from './sections.js';
 import { createTask, listTasks } from './tasks.js';
 import { createSubtask, listSubtasks } from './subtasks.js';
-import { listStatuses, statusIdForKey } from './statuses.js';
+import { defaultStatusId, listStatuses, statusIdForKey } from './statuses.js';
 import { modulesForLabels } from './modules.js';
 
 // Templates v2: a reusable project blueprint = a fixed skeleton (ordered
@@ -199,6 +199,9 @@ export const instantiateTemplate = db.transaction(
 
     const overrides = new Map(sectionLabels.map((o) => [o.sectionId, o.labelIds]));
     const project = createProject(userId, { name, description: template.description ?? null });
+    // Blueprint subtasks carry no status, so they start at the owner's default
+    // (which also keeps their derived `done` consistent).
+    const subtaskStatusId = defaultStatusId(userId);
     const addTask = (sectionId, t) => {
       const task = createTask(project.id, {
         title: t.title,
@@ -207,7 +210,8 @@ export const instantiateTemplate = db.transaction(
         notes: t.notes ?? null,
         sectionId,
       });
-      for (const title of t.subtasks ?? []) createSubtask(task.id, { title });
+      for (const title of t.subtasks ?? [])
+        createSubtask(task.id, { title, statusId: subtaskStatusId });
     };
 
     for (const section of template.sections) {

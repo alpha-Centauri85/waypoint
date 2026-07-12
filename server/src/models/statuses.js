@@ -33,6 +33,15 @@ const backfillNull = db.prepare(
 const reassignTasks = db.prepare(
   `UPDATE tasks SET status_id = ? WHERE status_id = ? AND ${userTasks}`,
 );
+// Subtasks share the task workflow, so a deleted status must also release the
+// owner's subtasks (scoped via task → project → user), keeping `done` in sync
+// with the fallback status's is_done. Without this they'd dangle / FK-error.
+const userSubtasks = `task_id IN (
+  SELECT t.id FROM tasks t JOIN projects p ON p.id = t.project_id WHERE p.user_id = ?
+)`;
+const reassignSubtasks = db.prepare(
+  `UPDATE subtasks SET status_id = ?, done = ? WHERE status_id = ? AND ${userSubtasks}`,
+);
 
 const seed = db.transaction((userId) => {
   DEFAULTS.forEach((d, i) => {
@@ -98,6 +107,7 @@ export const deleteStatus = db.transaction((id, userId) => {
   if (all.length <= 1) return { error: 'last' };
   const fallback = all.find((s) => s.id !== id);
   reassignTasks.run(fallback.id, id, userId);
+  reassignSubtasks.run(fallback.id, fallback.is_done ? 1 : 0, id, userId);
   del.run(id, userId);
   return { ok: true };
 });

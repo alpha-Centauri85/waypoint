@@ -47,14 +47,58 @@ test('full flow: register → project → task → subtask', async () => {
     .post(`/api/tasks/${task.body.id}/subtasks`)
     .send({ title: 'Draft wireframe' });
   expect(subtask.status).toBe(201);
+  // Subtasks share the task workflow: a new one defaults to the owner's first
+  // status (not done) and its derived `done` mirrors that.
+  const todo = statuses.find((s) => s.key === 'todo');
+  expect(subtask.body.status_id).toBe(todo.id);
+  expect(subtask.body.done).toBe(0);
 
-  const done = await agent
+  // Moving it to a "done" status flips the derived `done` flag.
+  const doneStatus = statuses.find((s) => s.is_done);
+  const updated = await agent
     .patch(`/api/tasks/${task.body.id}/subtasks/${subtask.body.id}`)
-    .send({ done: true });
-  expect(done.body.done).toBe(1);
+    .send({ statusId: doneStatus.id });
+  expect(updated.body.status_id).toBe(doneStatus.id);
+  expect(updated.body.done).toBe(1);
 
   const tasks = await agent.get(`/api/projects/${project.body.id}/tasks`);
   expect(tasks.body).toHaveLength(1);
+});
+
+test('subtask rejects a status id the project owner does not own', async () => {
+  const agent = request.agent(app);
+  await agent.post('/api/auth/register').send({ email: 'sub@x.com', password: 'password123' });
+  const project = await agent.post('/api/projects').send({ name: 'Subs' });
+  const task = await agent.post(`/api/projects/${project.body.id}/tasks`).send({ title: 'T' });
+  const subtask = await agent.post(`/api/tasks/${task.body.id}/subtasks`).send({ title: 'S' });
+
+  // A status id outside the owner's set is a 400 (not a DB-constraint error).
+  const bad = await agent
+    .patch(`/api/tasks/${task.body.id}/subtasks/${subtask.body.id}`)
+    .send({ statusId: 999999 });
+  expect(bad.status).toBe(400);
+});
+
+test('deleting a status reassigns subtasks using it (no orphans)', async () => {
+  const agent = request.agent(app);
+  await agent.post('/api/auth/register').send({ email: 'del@x.com', password: 'password123' });
+  const project = await agent.post('/api/projects').send({ name: 'Del' });
+  const task = await agent.post(`/api/projects/${project.body.id}/tasks`).send({ title: 'T' });
+  const statuses = (await agent.get('/api/statuses')).body;
+  const doing = statuses.find((s) => s.key === 'doing');
+
+  const subtask = (
+    await agent.post(`/api/tasks/${task.body.id}/subtasks`).send({ title: 'S', statusId: doing.id })
+  ).body;
+  expect(subtask.status_id).toBe(doing.id);
+
+  const del = await agent.delete(`/api/statuses/${doing.id}`);
+  expect(del.status).toBe(204);
+
+  // The subtask is reassigned to a surviving status, not left dangling.
+  const after = (await agent.get(`/api/tasks/${task.body.id}/subtasks`)).body[0];
+  expect(after.status_id).toBeTruthy();
+  expect(after.status_id).not.toBe(doing.id);
 });
 
 test('tasks can be reordered and new tasks append to the end', async () => {

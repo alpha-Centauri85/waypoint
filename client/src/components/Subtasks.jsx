@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
-import { ActionIcon, Checkbox, Group, Stack, Text, TextInput } from '@mantine/core';
+import { ActionIcon, Group, Stack, Text, TextInput } from '@mantine/core';
 import { Plus, Trash2 } from 'lucide-react';
 import { createSubtask, deleteSubtask, listSubtasks, updateSubtask } from '../api.js';
 import { notifyError } from '../notify.js';
+import { useStatuses } from '../statuses.jsx';
+import StatusPicker from './StatusPicker.jsx';
 
 export default function Subtasks({ taskId, canEdit = true }) {
+  const { statusById } = useStatuses();
   const [subtasks, setSubtasks] = useState([]);
   const [newTitle, setNewTitle] = useState('');
 
@@ -34,9 +37,9 @@ export default function Subtasks({ taskId, canEdit = true }) {
     }
   }
 
-  async function toggle(subtask) {
+  async function setStatus(subtask, statusId) {
     try {
-      await updateSubtask(taskId, subtask.id, { done: !subtask.done });
+      await updateSubtask(taskId, subtask.id, { statusId });
       refresh();
     } catch (err) {
       notifyError(err, 'Could not update subtask');
@@ -52,33 +55,46 @@ export default function Subtasks({ taskId, canEdit = true }) {
     }
   }
 
+  // Subtask completion is a local view only (not wired into task/project rollups).
+  const doneCount = subtasks.filter((s) => statusById(s.status_id).is_done).length;
+
   return (
     <Stack gap={4} mt="xs" ml="lg">
-      {subtasks.map((s) => (
-        <Group key={s.id} justify="space-between" gap="xs" wrap="nowrap">
-          <Checkbox
-            checked={!!s.done}
-            onChange={() => toggle(s)}
-            disabled={!canEdit}
-            label={
-              <Text td={s.done ? 'line-through' : undefined} c={s.done ? 'dimmed' : undefined}>
+      {subtasks.map((s) => {
+        const done = statusById(s.status_id).is_done;
+        return (
+          <Group key={s.id} justify="space-between" gap="xs" wrap="nowrap">
+            <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
+              <StatusPicker
+                statusId={s.status_id}
+                onChange={(statusId) => setStatus(s, statusId)}
+                canEdit={canEdit}
+                size="sm"
+                w={100}
+              />
+              <Text truncate td={done ? 'line-through' : undefined} c={done ? 'dimmed' : undefined}>
                 {s.title}
               </Text>
-            }
-          />
-          {canEdit && (
-            <ActionIcon
-              variant="subtle"
-              color="red"
-              size="sm"
-              aria-label="Delete subtask"
-              onClick={() => handleDelete(s)}
-            >
-              <Trash2 size={14} />
-            </ActionIcon>
-          )}
-        </Group>
-      ))}
+            </Group>
+            {canEdit && (
+              <ActionIcon
+                variant="subtle"
+                color="red"
+                size="sm"
+                aria-label="Delete subtask"
+                onClick={() => handleDelete(s)}
+              >
+                <Trash2 size={14} />
+              </ActionIcon>
+            )}
+          </Group>
+        );
+      })}
+      {subtasks.length > 0 && (
+        <Text size="xs" c="dimmed" ml={4}>
+          {doneCount} of {subtasks.length} done
+        </Text>
+      )}
       {canEdit && (
         <form onSubmit={handleCreate}>
           <Group gap="xs" wrap="nowrap">
