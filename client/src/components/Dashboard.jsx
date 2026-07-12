@@ -122,7 +122,7 @@ export default function Dashboard({ onOpenTemplates, focusProjectId, onFocused }
                 ))
               )}
               {!loading && !projects.length && (
-                <Text c="dark.2" size="sm" py="xs">
+                <Text c="dimmed" size="sm" py="xs">
                   No projects yet. Add your first one below.
                 </Text>
               )}
@@ -191,7 +191,9 @@ function ProjectRow({ project, active, onSelect, onEdit, onDelete }) {
         cursor: 'pointer',
         borderRadius: 8,
         padding: '8px 8px 10px 10px',
-        backgroundColor: active ? 'var(--mantine-color-dark-5)' : 'transparent',
+        backgroundColor: active
+          ? 'light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-5))'
+          : 'transparent',
         borderLeft: active ? '3px solid var(--mantine-color-teal-5)' : '3px solid transparent',
       }}
     >
@@ -199,7 +201,7 @@ function ProjectRow({ project, active, onSelect, onEdit, onDelete }) {
         <Text
           size="sm"
           fw={active ? 600 : 400}
-          c={active ? 'white' : 'dark.1'}
+          c={active ? undefined : 'dimmed'}
           truncate
           style={{ flex: 1 }}
         >
@@ -239,7 +241,7 @@ function ProjectRow({ project, active, onSelect, onEdit, onDelete }) {
           <Badge size="xs" variant="light" color={role === 'editor' ? 'teal' : 'gray'}>
             {role}
           </Badge>
-          <Text size="xs" c="dark.2" truncate>
+          <Text size="xs" c="dimmed" truncate>
             shared by {project.owner_email}
           </Text>
         </Group>
@@ -262,7 +264,7 @@ function ProjectRow({ project, active, onSelect, onEdit, onDelete }) {
           style={{ flex: 1 }}
           aria-label={`${done} of ${total} tasks done`}
         />
-        <Text size="xs" c="dark.2" style={{ fontVariantNumeric: 'tabular-nums' }}>
+        <Text size="xs" c="dimmed" style={{ fontVariantNumeric: 'tabular-nums' }}>
           {total ? `${done}/${total}` : '—'}
         </Text>
       </Group>
@@ -274,8 +276,8 @@ function EmptyState() {
   return (
     <Center h={320}>
       <Stack align="center" gap="xs">
-        <FolderKanban size={40} color="var(--mantine-color-dark-3)" />
-        <Text c="dark.2">Create or select a project to get started.</Text>
+        <FolderKanban size={40} color="var(--mantine-color-dimmed)" />
+        <Text c="dimmed">Create or select a project to get started.</Text>
       </Stack>
     </Center>
   );

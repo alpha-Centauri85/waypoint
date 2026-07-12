@@ -92,7 +92,7 @@ export default function LabelManagerModal({ opened, onClose, onChanged }) {
           <Loader color="teal" />
         </Group>
       ) : labels.length === 0 ? (
-        <Text c="dark.2" py="md" ta="center">
+        <Text c="dimmed" py="md" ta="center">
           No labels yet. Add labels from a task or project’s edit dialog.
         </Text>
       ) : (

@@ -131,7 +131,7 @@ function StatusesPanel() {
   return (
     <Paper withBorder p="lg" radius="lg">
       <Title order={4}>Workflow statuses</Title>
-      <Text size="sm" c="dark.2" mt={4} mb="md">
+      <Text size="sm" c="dimmed" mt={4} mb="md">
         The states a task moves through — they become your board columns. “Counts as done” marks a
         state as complete (drives progress and overdue).
       </Text>
@@ -290,7 +290,7 @@ function LabelsPanel() {
           </Badge>
         )}
       </Group>
-      <Text size="sm" c="dark.2" mt={4} mb="md">
+      <Text size="sm" c="dimmed" mt={4} mb="md">
         Tags shared across all your projects and tasks.
       </Text>
 
@@ -304,7 +304,7 @@ function LabelsPanel() {
             <LabelRow key={label.id} label={label} onSave={save} onRemove={remove} />
           ))}
           {labels.length === 0 && (
-            <Text size="sm" c="dark.2">
+            <Text size="sm" c="dimmed">
               No labels yet — add one below.
             </Text>
           )}

@@ -39,11 +39,11 @@ export default function AuthForm({ onAuthed }) {
   }
 
   return (
-    <Center mih="100vh" bg="dark.7" p="md">
+    <Center mih="100vh" bg="var(--mantine-color-dark-7)" p="md">
       <Stack w="100%" maw={400} gap="xl">
         <Stack gap={6} align="center">
-          <Logo size={40} />
-          <Text size="sm" c="dark.2" ta="center">
+          <Logo size={40} color="var(--mantine-color-white)" />
+          <Text size="sm" c="var(--mantine-color-dark-2)" ta="center">
             Plan with{' '}
             <Text span c="teal.4" inherit>
               clarity
@@ -56,12 +56,14 @@ export default function AuthForm({ onAuthed }) {
           </Text>
         </Stack>
 
-        <Paper p="xl" radius="lg" withBorder bg="dark.6">
+        <Paper p="xl" radius="lg" withBorder bg="var(--mantine-color-dark-6)">
           <form onSubmit={handleSubmit}>
             <Stack>
               <Box>
-                <Title order={2}>{isRegister ? 'Create an account' : 'Sign in'}</Title>
-                <Text size="sm" c="dark.2" mt={4}>
+                <Title order={2} c="var(--mantine-color-dark-0)">
+                  {isRegister ? 'Create an account' : 'Sign in'}
+                </Title>
+                <Text size="sm" c="var(--mantine-color-dark-2)" mt={4}>
                   {isRegister
                     ? 'Start organizing your projects.'
                     : 'Welcome back — pick up where you left off.'}
@@ -91,7 +93,7 @@ export default function AuthForm({ onAuthed }) {
               <Button type="submit" fullWidth size="md" loading={loading}>
                 {isRegister ? 'Create account' : 'Log in'}
               </Button>
-              <Text size="sm" c="dark.2" ta="center">
+              <Text size="sm" c="var(--mantine-color-dark-2)" ta="center">
                 {isRegister ? 'Already have an account?' : 'Need an account?'}{' '}
                 <Anchor
                   component="button"
