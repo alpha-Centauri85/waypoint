@@ -45,10 +45,10 @@ export default function InviteAccept({ token, onDone }) {
   const invalid = preview && preview.status !== 'ok';
 
   return (
-    <Center h="100vh" bg="dark.7">
-      <Card withBorder radius="lg" p="xl" w={420} maw="90vw">
+    <Center h="100vh" bg="var(--mantine-color-dark-7)">
+      <Card withBorder radius="lg" p="xl" w={420} maw="90vw" bg="var(--mantine-color-dark-6)">
         <Stack align="center" gap="md">
-          <Logo size={28} />
+          <Logo size={28} color="var(--mantine-color-white)" />
           {loading ? (
             <Loader color="teal" />
           ) : invalid ? (
@@ -63,10 +63,10 @@ export default function InviteAccept({ token, onDone }) {
           ) : (
             <>
               <Users size={32} color="var(--mantine-color-teal-4)" />
-              <Text ta="center">
+              <Text ta="center" c="var(--mantine-color-dark-1)">
                 You’ve been invited by <b>{preview.inviterEmail}</b> to join
               </Text>
-              <Text fw={700} fz="lg" ta="center">
+              <Text fw={700} fz="lg" ta="center" c="var(--mantine-color-dark-0)">
                 {preview.projectName}
               </Text>
               <Badge variant="light" color={preview.role === 'editor' ? 'teal' : 'gray'}>

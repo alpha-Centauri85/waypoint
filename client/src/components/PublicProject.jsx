@@ -37,7 +37,7 @@ export default function PublicProject({ token }) {
   }, [token]);
 
   return (
-    <Box mih="100vh" bg="dark.7">
+    <Box mih="100vh" bg="var(--mantine-color-body)">
       <Box
         component="header"
         h={64}
@@ -109,7 +109,7 @@ function ProjectView({ data }) {
       ) : (
         groups.map((group) => (
           <Stack key={group.id} gap="xs">
-            <Text fw={600} c="dark.1" tt="uppercase" fz="xs" style={{ letterSpacing: '0.06em' }}>
+            <Text fw={600} c="dimmed" tt="uppercase" fz="xs" style={{ letterSpacing: '0.06em' }}>
               {group.name}
             </Text>
             <Stack gap="xs">
@@ -169,7 +169,7 @@ function PublicTask({ task, status }) {
           ))}
         </Group>
         {task.subtaskTotal > 0 && (
-          <Group gap={4} wrap="nowrap" c="dark.1" style={{ flexShrink: 0 }}>
+          <Group gap={4} wrap="nowrap" c="dimmed" style={{ flexShrink: 0 }}>
             <CheckSquare size={14} />
             <Text size="sm">
               {task.subtaskDone} of {task.subtaskTotal} done

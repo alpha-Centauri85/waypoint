@@ -24,6 +24,8 @@ export const login = (email, password) =>
   request('/api/auth/login', { method: 'POST', body: { email, password } });
 export const logout = () => request('/api/auth/logout', { method: 'POST' });
 export const getMe = () => request('/api/auth/me');
+// Update the signed-in user's preferences (e.g. { theme: 'light' | 'dark' }).
+export const updateMe = (fields) => request('/api/auth/me', { method: 'PATCH', body: fields });
 
 // Projects
 export const listProjects = () => request('/api/projects');
