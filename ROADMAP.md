@@ -67,7 +67,12 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
       and the task view header shows "X of Y done" + %. Kept in sync by a
       `onTasksChanged` callback from `TaskList` → `Dashboard`.
 - [~] **11. Optimistic UI or debounced refresh** (M) — drag-reorder is already
-  optimistic; other actions still refetch. Revisit if it feels sluggish.
+  optimistic; other actions still refetch. **Deferred to post-deploy** (decision
+  2026-07-12): a latency benchmark drove every mutation in-process and found all of
+  them <20ms server-side even at 520 tasks/project, so the server is not the
+  bottleneck. Revisit once real users are on it — the perceived cost is
+  refetch+rerender, not the API. Highest-value candidate if ever built: board
+  status-change (drag-reorder is already optimistic).
 
 ## Phase 3 — Deploy on the Windows media server (can start after Phase 1)
 
@@ -237,6 +242,72 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
       editor, reuse a module across templates, and carry labels/due dates into
       blueprints.
 
+## Phase 5 — Feature round (shipped 2026-07-12)
+
+Scoped with the user and reviewed by parallel sub-agents against the live code, then
+built by parallel agents (one worktree/PR each) and code-reviewed before merge. Build
+order was dependency-aware; light mode ran last so its `dark.N` sweep also covered the
+components added by 27–30. **All items below are merged to main** (verified green: 116
+tests, `dark.N` gate clean). Optimistic UI (11) was **deferred** on benchmark evidence
+(see item 11).
+
+_Cross-feature gotcha caught in review:_ 28 made subtask `done` derived from status and
+dropped `done` as a PATCH input, which broke 29's test that seeded done subtasks via
+`PATCH {done:true}`; fixed by seeding via a done `statusId` — the feature was correct,
+only the test was stale. (A reminder that integrations break at the seams, not the happy
+path.)
+
+- [x] **27. Section descriptions** (S) — _Shipped (PR #3)._ add an optional `description` to
+      `sections` (idempotent `ensureColumn`, mirrors `tasks.notes`/`projects.description`),
+      a zod field, a model tweak, and one editor field + display line under the
+      section header in `TaskList.jsx`. Task notes already exist — this is sections
+      only. Template carry-through (`template_sections`) is **out of scope**.
+- [x] **28. Subtask statuses** (M) — _Shipped (PR #4)._ replace the subtask done/checkbox with a
+      status, **reusing the per-user `statuses` workflow** (not a new set). Add
+      `subtasks.status_id` (FK) via `ensureColumn`; idempotent, **owner-scoped**
+      backfill (done=1 → owner's `is_done` status, done=0 → first status, only where
+      NULL); **keep `done` as a derived column** (`= status.is_done`) for BC with
+      tests/backup/templates. Must-fix: extend `deleteStatus` to also reassign
+      subtasks (it reassigns tasks only today → else orphan/FK error), and thread the
+      owner id through template/module instantiation so injected subtasks get a
+      default status. Extract a shared `StatusPicker` from `TaskCard` and reuse it in
+      `Subtasks.jsx` (resolve statuses against the owner via `ProjectStatusesProvider`).
+      Subtask completion stays **independent** of task/project progress rollups for v1.
+- [x] **29. Public view-only share link** (M) — _Shipped (PR #2); status list minimised to statuses used by visible tasks (review fix)._ an owner-generated, **no-login**,
+      read-only project link, distinct from the member-invite tokens. New
+      `public_shares` table (one link/project, `randomBytes(24)` token,
+      delete-on-revoke); a single **unauthenticated** `GET /api/public/:token`
+      mounted before the `/api` 404 and rate-limited. **Whitelist via named-column
+      queries, never `SELECT *`** (the existing reads leak owner `user_id`, task
+      `notes`, status `user_id`, author emails). Exposes: project name, sections,
+      tasks (title/status/due/priority/labels) + a **subtask progress count**
+      ("X of N done", no titles), statuses, labels — all resolved against the
+      **owner**. Excludes project description, comments, activity, members. Revoked or
+      missing → **404 (never 403)**; **no expiry** (revoke-only). Client: a
+      `/share/:token` route in `App.jsx` that short-circuits before the auth gate and
+      renders a standalone read-only `PublicProject` page (no shell/edit UI); owner
+      generates/revokes it in `ShareModal`.
+- [~] **30. Brand asset import** (S–M) — _Shipped (PR #8): favicon (SVG) + `app-icon.svg` wired into `index.html`, and the official Waypoint wordmark in `Logo.jsx` (ink bars flip via `currentColor`, gradient arrow fixed). Deferred: legacy `.ico`/PNG raster icons + the full PWA size set (SVG favicon covers modern browsers)._ pull the finished Waypoint brand kit from
+      the design board (claude.ai/design project "Waypoint Design Board"): adopt the
+      official logo SVGs into `Logo.jsx` (light/dark wordmark + icon variants),
+      install the real favicon/PWA icon set into the client, and use the brand token
+      scales (navy/teal/blue 10-step + near-white `gray5`) to seed the light palette
+      (31). **Keep the app's self-hosted fonts** — do not adopt the board's CDN font
+      imports (offline requirement). Source PNG uploads are mood-board images, not app
+      assets.
+- [x] **31. Light mode** (L) — _Shipped (PR #6): `users.theme` persistence + header toggle, full `dark.N` sweep (gate clean), verified in-browser in both schemes; the public `/share` view stays forced-dark. NB: first build (PR #5) forked from a stale pre-merge main and was rebuilt on current main + re-swept — always `git fetch` after gh merges before spawning worktree agents._ add a light theme; **dark stays the default**, light
+      is an opt-in manual toggle in the header user menu, **persisted server-side on
+      `users.theme`** (via `/auth/me` + a `PATCH`) so it follows the user across
+      devices. Keep the shipped **teal primary + amber secondary** (not the brand
+      board's blue-primary). Work: swap `forceColorScheme="dark"` → `defaultColorScheme`
+      (force makes the toggle a silent no-op), define the light palette (from 30's
+      tokens), and convert ~51 `dark.N` references across ~19 files to scheme-aware
+      tokens (most are `c="dark.2"` → `c="dimmed"`), plus the `theme.js` component
+      overrides, the `App.jsx` header, and `index.css`. Logo follows the scheme via
+      `currentColor` / `var(--mantine-color-text)`. No system-auto option (light/dark
+      only); pre-login screens stay dark-branded. Completion gate: `grep 'dark\.[0-9]'`
+      comes back clean.
+
 ## Recommended next step
 
 **Done so far:** Phases 0–1, the brand design, Phase 2 (9–10), Phase 3 single-
@@ -244,6 +315,12 @@ origin serving (12) + backups (15), and Phase 4 labels+priority (16), sections
 (16b), board view, search (17), templates & modules (21 → v2 25 → v3 26), custom
 statuses (23) + Settings (22), activity log + comments (18), project sharing (19),
 and in-app due-date reminders (20, in-app increment).
+
+**Shipped (Phase 5, 2026-07-12):** section descriptions (27), subtask statuses (28),
+a public no-login view-only share link (29), brand-asset import (30, favicon + wordmark;
+raster icons deferred), and light mode (31) — all merged to main (green: 116 tests).
+See Phase 5 above. Optimistic UI (11) deferred on benchmark evidence. (Email delivery
+for reminders/invites is being built separately.)
 
 **Next candidates:**
 

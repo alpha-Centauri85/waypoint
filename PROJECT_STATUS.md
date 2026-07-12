@@ -299,3 +299,12 @@ channel over the notifications rows, which also unblocks invite emails). Other
 candidates: per-task assignment (to target reminders/activity at a person), step 11
 (optimistic UI), and smaller polish (template-editor reorder, board swimlanes,
 jump-to-task from search).
+
+**Shipped Phase 5 (2026-07-12; sub-agent built + reviewed, all merged to main):**
+section descriptions (27), subtask statuses reusing the per-user `statuses` workflow
+(28), a public **no-login view-only** share link with a subtask progress count (29),
+brand assets — SVG favicon + official wordmark in `Logo.jsx` (30; raster icons/full PWA
+set deferred), and **light mode** (31, dark stays default, opt-in toggle persisted on
+`users.theme`, teal primary kept, full `dark.N` sweep). Merged main verified green (116
+tests, lint/build clean). Optimistic UI (11) **deferred** — a latency benchmark showed
+all mutations <20ms server-side. See ROADMAP Phase 5 for the full spec + decisions.
