@@ -167,7 +167,23 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
       (`InviteAccept`). Covered by `server/test/sharing.test.js`. _Follow-ups:_
       email delivery of invites, search across shared projects, per-section
       viewer-gating polish.
-- [ ] **20. Due-date notifications / reminders**
+- [~] **20. Due-date notifications / reminders** — **in-app shipped; email is the
+  remaining increment.** A `notifications` table + `models/notifications.js`:
+  a sweep (`runReminders`) finds each user's not-done tasks that are due today
+  or overdue in any project they can access (owned or shared) and inserts one
+  reminder per task per due date. A UNIQUE `(user, task, type, due_date)` index
+  makes the sweep idempotent (`INSERT OR IGNORE`) so it can run on a timer
+  without spamming; rescheduling a task (new due date) can remind again. The
+  sweep runs on server boot + on an interval (`REMINDER_INTERVAL_MS`, default
+  hourly, `index.js` — not `app.js`, so tests don't spawn a timer) and via
+  `POST /api/notifications/run` (idempotent; for the media server's Task
+  Scheduler and for verifying). API: `GET /api/notifications` returns items +
+  an unread count, plus `POST .../:id/read` and `.../read-all`. Client: a
+  header **bell** (`NotificationBell`, unread badge) listing reminders; clicking
+  one marks it read and opens the owning project. Covered by
+  `server/test/notifications.test.js`. _Next:_ email delivery as a second
+  channel over the same rows (also unblocks invite emails), and per-task
+  assignment to narrow "who gets reminded".
 - [x] **22. Settings / configuration screen** (M) — a dedicated Settings screen
       (`SettingsScreen`, reached from the header user menu; the logo returns home).
       Houses **workflow statuses** (23) and **global label management**
@@ -225,15 +241,18 @@ Status key: `[ ]` todo · `[~]` in progress · `[x]` done
 
 **Done so far:** Phases 0–1, the brand design, Phase 2 (9–10), Phase 3 single-
 origin serving (12) + backups (15), and Phase 4 labels+priority (16), sections
-(16b), board view, search (17), templates & modules (21).
+(16b), board view, search (17), templates & modules (21 → v2 25 → v3 26), custom
+statuses (23) + Settings (22), activity log + comments (18), project sharing (19),
+and in-app due-date reminders (20, in-app increment).
 
 **Next candidates:**
 
-- **22. Settings screen + 23. custom statuses** — requested; do 22 first (it's
-  the home for managing 23). Custom statuses is the larger, higher-impact one.
-- **18. Activity log** / **task comments** — start the collaboration arc; useful
-  solo too.
+- **20 email increment** — deliver reminders by email (nodemailer + SMTP config)
+  as a second channel over the existing `notifications` rows; the same infra
+  unblocks invite-email delivery (a sharing follow-up).
+- **Per-task assignment** — assign a task to a project member so reminders (and
+  activity) can target the responsible person rather than everyone with access.
 - **Deploy** — host-specific (13/14); the app is deploy-ready whenever a host is
   chosen (any Node host, not just Windows).
 - Smaller polish: step 11 (optimistic UI), reorder in the template editor, board
-  swimlanes by section, jump-to-task from search.
+  swimlanes by section, jump-to-task from search, search across shared projects.

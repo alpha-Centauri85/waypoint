@@ -86,6 +86,14 @@ export const listActivities = ({ projectId, taskId, limit } = {}) => {
   return request(`/api/activities${qs ? `?${qs}` : ''}`);
 };
 
+// Notifications (in-app due-date reminders) → { items, unreadCount }
+export const listNotifications = (limit) =>
+  request(`/api/notifications${limit != null ? `?limit=${limit}` : ''}`);
+export const markNotificationRead = (id) =>
+  request(`/api/notifications/${id}/read`, { method: 'POST' });
+export const markAllNotificationsRead = () =>
+  request('/api/notifications/read-all', { method: 'POST' });
+
 // Templates (reusable project blueprints)
 export const listTemplates = () => request('/api/templates');
 export const getTemplate = (id) => request(`/api/templates/${id}`);

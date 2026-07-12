@@ -51,4 +51,11 @@ export const config = {
   // Where `npm run db:backup` writes WAL-safe snapshots, and how many to keep.
   backupDir: process.env.BACKUP_DIR || path.join(dataDir, 'backups'),
   backupKeep: Number(process.env.BACKUP_KEEP) || 14,
+  // In-app due-date reminders: how often the background sweep runs (ms). Set to
+  // 0 (or negative) to disable the timer — the sweep can still be triggered on
+  // demand via POST /api/notifications/run.
+  reminderIntervalMs:
+    process.env.REMINDER_INTERVAL_MS !== undefined
+      ? Number(process.env.REMINDER_INTERVAL_MS)
+      : 60 * 60 * 1000, // hourly
 };

@@ -4,7 +4,7 @@
 > speed. Keep this current as the project evolves; see `ROADMAP.md` for the plan
 > and `CLAUDE.md` for full architecture + conventions.
 
-**Last updated:** 2026-07-08
+**Last updated:** 2026-07-12
 
 ## What it is
 
@@ -46,6 +46,7 @@ middleware guards protected routes via `req.session.userId`.
 - `GET/POST /modules`, `POST /modules/bulk`, `GET/PATCH/DELETE /modules/:id`
 - `GET /search?q=` (projects + tasks, user-scoped)
 - `GET /activities?projectId=&taskId=&limit=` (activity log, user-scoped, most-recent-first)
+- `GET /notifications` → `{ items, unreadCount }`; `POST /notifications/:id/read`, `POST /notifications/read-all`, `POST /notifications/run` (trigger the due-date sweep)
 - `GET/POST /tasks/:taskId/comments`, `PATCH/DELETE /tasks/:taskId/comments/:id` (author-scoped edit/delete)
 - `GET /projects/:id/statuses`, `GET /projects/:id/labels` (the owner's sets, for any member)
 - `GET /projects/:id/members`, `POST/DELETE .../members/invites[/:id]`, `PATCH/DELETE .../members/:userId`
@@ -177,6 +178,26 @@ role-gated controls (`TaskCard`/`Subtasks`/add forms hidden for viewers), a
 `ShareModal` (generate/copy invite links, roster, role change, remove/leave) from
 the project menu, and an `/invite/:token` accept screen (`InviteAccept`).
 
+## Due-date reminders (in-app)
+
+Roadmap 20, **in-app increment**. A `notifications` table + `models/notifications.js`
+provide due-date reminders. A sweep (`runReminders`) finds each user's **not-done**
+tasks that are **due today or overdue** across every project they can access (owned
+or shared) and inserts **one reminder per task per due date**. A UNIQUE
+`(user, task, type, due_date)` index makes the sweep idempotent (`INSERT OR IGNORE`),
+so it runs on a timer without spamming; rescheduling a task (a new due date) can
+remind again. The sweep runs on server boot and on an interval (`REMINDER_INTERVAL_MS`,
+default hourly) from `index.js` (not `app.js`, so tests don't spawn a timer), and can
+be triggered on demand via `POST /api/notifications/run` (idempotent — suits the media
+server's Task Scheduler). API: `GET /api/notifications` → `{ items, unreadCount }`,
+`POST /api/notifications/:id/read`, `.../read-all`. Client: a header **bell**
+(`NotificationBell`) with an unread badge polls on a light interval; clicking a
+reminder marks it read and opens the owning project. **Delivery is in-app only** for
+now — email is the next increment (a second channel over the same rows, which also
+unblocks invite emails). Since tasks have no per-user assignment yet, every member of
+a shared project is reminded; per-task assignment would narrow this later. Covered by
+`server/test/notifications.test.js`.
+
 ## Error handling
 
 Central Express error handler (`server/src/middleware/errorHandler.js`),
@@ -272,6 +293,9 @@ for `matchMedia`/`ResizeObserver` live in `client/src/setupTests.js`.
 Phases 0 + 1 + brand design + Phase 2 (9–10) done. Phase 3: single-origin
 production serving ✅ and WAL-safe backups (`npm run db:backup`, git-ignored
 `server/data/`) ✅. Remaining: Windows service (13) + HTTPS reverse proxy (14) —
-host-specific setup on the media server. Then the expanded product roadmap
-(views, reporting/dashboards, labels, search, comments, sharing) or step 11
-(optimistic UI).
+host-specific setup on the media server. On the feature side, due-date reminders
+(20) ship **in-app**; the remaining increment is **email delivery** (a second
+channel over the notifications rows, which also unblocks invite emails). Other
+candidates: per-task assignment (to target reminders/activity at a person), step 11
+(optimistic UI), and smaller polish (template-editor reorder, board swimlanes,
+jump-to-task from search).
