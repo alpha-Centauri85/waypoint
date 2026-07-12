@@ -111,6 +111,11 @@ test('instantiating injects modules into sections by matching label', async () =
   const contract = tasks.body.find((t) => t.title === 'Contract');
   const subs = await agent.get(`/api/tasks/${contract.id}/subtasks`);
   expect(subs.body.map((s) => s.title)).toEqual(['Draft', 'Sign']);
+
+  // Instantiated subtasks also get a real status — the owner's default (first)
+  // workflow status, not left null.
+  const defaultStatus = (await agent.get('/api/statuses')).body[0];
+  expect(subs.body.every((s) => s.status_id === defaultStatus.id)).toBe(true);
 });
 
 test('instantiate applies per-section label overrides chosen at creation time', async () => {

@@ -120,6 +120,41 @@ test('collaborator tasks use the OWNER’s statuses and labels, not their own', 
   expect(created.body.labels.map((l) => l.id)).toEqual([label.id]);
 });
 
+test('collaborator subtasks use the OWNER’s statuses, not their own', async () => {
+  const owner = await freshAgent('owner@x.com');
+  const project = (await owner.post('/api/projects').send({ name: 'P' })).body;
+  const task = (await owner.post(`/api/projects/${project.id}/tasks`).send({ title: 'T' })).body;
+  const ownerStatuses = (await owner.get('/api/statuses')).body;
+  const todo = ownerStatuses.find((s) => s.key === 'todo');
+  const doing = ownerStatuses.find((s) => s.key === 'doing');
+
+  const editor = await freshAgent('editor@x.com');
+  await share(owner, project.id, editor, 'editor');
+  // The editor has their own (separate) per-user statuses, seeded lazily on register.
+  const editorStatuses = (await editor.get('/api/statuses')).body;
+  const editorTodo = editorStatuses.find((s) => s.key === 'todo');
+
+  // (a) Editor creates a subtask with no statusId — it defaults to the OWNER's
+  // first status, not the editor's.
+  const created = await editor.post(`/api/tasks/${task.id}/subtasks`).send({ title: 'By editor' });
+  expect(created.status).toBe(201);
+  expect(created.body.status_id).toBe(todo.id);
+
+  // (b) Editor can PATCH the subtask to one of the OWNER's statuses.
+  const patched = await editor
+    .patch(`/api/tasks/${task.id}/subtasks/${created.body.id}`)
+    .send({ statusId: doing.id });
+  expect(patched.status).toBe(200);
+  expect(patched.body.status_id).toBe(doing.id);
+
+  // (c) A status id belonging to the EDITOR (not the owner) is rejected — proving
+  // validation scopes to the project owner, not the acting user.
+  const rejected = await editor
+    .patch(`/api/tasks/${task.id}/subtasks/${created.body.id}`)
+    .send({ statusId: editorTodo.id });
+  expect(rejected.status).toBe(400);
+});
+
 test('project activity shows every member’s actions with author attribution', async () => {
   const owner = await freshAgent('owner@x.com');
   const project = (await owner.post('/api/projects').send({ name: 'P' })).body;
