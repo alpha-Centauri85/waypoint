@@ -300,11 +300,11 @@ candidates: per-task assignment (to target reminders/activity at a person), step
 (optimistic UI), and smaller polish (template-editor reorder, board swimlanes,
 jump-to-task from search).
 
-**Spec'd next round (Phase 5, 2026-07-12; sub-agent reviewed, decisions locked):**
+**Shipped Phase 5 (2026-07-12; sub-agent built + reviewed, all merged to main):**
 section descriptions (27), subtask statuses reusing the per-user `statuses` workflow
 (28), a public **no-login view-only** share link with a subtask progress count (29),
-brand-asset import from the design board — logos/favicons/light-palette tokens (30),
-and **light mode** (31, dark stays default, opt-in toggle persisted on `users.theme`,
-teal primary kept). Build order: 27 → 28 → 29 → (30 + 31). Optimistic UI (11)
-**deferred** — a latency benchmark showed all mutations <20ms server-side. See
-ROADMAP Phase 5 for the full spec.
+brand assets — SVG favicon + official wordmark in `Logo.jsx` (30; raster icons/full PWA
+set deferred), and **light mode** (31, dark stays default, opt-in toggle persisted on
+`users.theme`, teal primary kept, full `dark.N` sweep). Merged main verified green (116
+tests, lint/build clean). Optimistic UI (11) **deferred** — a latency benchmark showed
+all mutations <20ms server-side. See ROADMAP Phase 5 for the full spec + decisions.
