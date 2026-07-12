@@ -13,3 +13,8 @@ export const loginSchema = z.object({
   email,
   password: z.string().min(1, 'is required'),
 });
+
+// UI colour-scheme preference. Only two schemes are supported (no system-auto).
+export const updateMeSchema = z.object({
+  theme: z.enum(['light', 'dark']),
+});

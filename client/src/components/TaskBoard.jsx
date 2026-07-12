@@ -41,20 +41,20 @@ export default function TaskBoard({ tasks, onChangeStatus, onEditTask }) {
             style={{
               flex: '1 1 0',
               minWidth: 240,
-              background: 'var(--mantine-color-dark-7)',
+              background: 'light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-7))',
               borderRadius: 12,
               padding: 10,
               outline:
                 overId === col.id
                   ? '2px dashed var(--mantine-color-teal-7)'
-                  : '1px solid var(--mantine-color-dark-4)',
+                  : '1px solid var(--mantine-color-default-border)',
             }}
           >
             <Group justify="space-between" px={4} pb={2}>
               <Badge color={col.color} variant={col.is_done ? 'filled' : 'light'} radius="sm">
                 {col.name}
               </Badge>
-              <Text size="sm" c="dark.2" fw={600}>
+              <Text size="sm" c="dimmed" fw={600}>
                 {items.length}
               </Text>
             </Group>
@@ -75,7 +75,7 @@ export default function TaskBoard({ tasks, onChangeStatus, onEditTask }) {
             ))}
 
             {!items.length && (
-              <Text size="xs" c="dark.3" ta="center" py="md">
+              <Text size="xs" c="dimmed" ta="center" py="md">
                 Drop tasks here
               </Text>
             )}
@@ -94,7 +94,6 @@ function BoardCard({ task, isDone, dragging, onDragStart, onDragEnd, onClick }) 
       withBorder
       p="sm"
       radius="md"
-      bg="dark.6"
       draggable
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}

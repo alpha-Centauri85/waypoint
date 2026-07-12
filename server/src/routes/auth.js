@@ -1,16 +1,16 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
-import { createUser, getUserByEmail, getUserById } from '../models/users.js';
+import { createUser, getUserByEmail, getUserById, updateUserTheme } from '../models/users.js';
 import { ensureStatuses } from '../models/statuses.js';
 import { conflict, unauthorized } from '../lib/errors.js';
 import { validateBody } from '../lib/validate.js';
 import { authLimiter } from '../middleware/rateLimit.js';
-import { registerSchema, loginSchema } from '../schemas/auth.js';
+import { registerSchema, loginSchema, updateMeSchema } from '../schemas/auth.js';
 
 const router = Router();
 
 function publicUser(user) {
-  return { id: user.id, email: user.email };
+  return { id: user.id, email: user.email, theme: user.theme };
 }
 
 // Rate-limit only the credential endpoints; /me (hit on every page load) and
@@ -46,6 +46,13 @@ router.get('/me', (req, res) => {
   // Seed default statuses + backfill legacy task statuses before the app loads,
   // so task fetches always have a status_id (no first-render race).
   ensureStatuses(user.id);
+  res.json(publicUser(user));
+});
+
+// Update the signed-in user's preferences (currently just the colour scheme).
+router.patch('/me', validateBody(updateMeSchema), (req, res) => {
+  if (!req.session?.userId) throw unauthorized('Not authenticated');
+  const user = updateUserTheme(req.session.userId, req.body.theme);
   res.json(publicUser(user));
 });
 
