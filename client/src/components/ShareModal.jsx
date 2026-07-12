@@ -15,8 +15,16 @@ import {
   TextInput,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { Check, Copy, Link as LinkIcon, Trash2 } from 'lucide-react';
-import { createInvite, listMembers, removeMember, revokeInvite, setMemberRole } from '../api.js';
+import { Check, Copy, Globe, Link as LinkIcon, Trash2 } from 'lucide-react';
+import {
+  createInvite,
+  createPublicShare,
+  listMembers,
+  removeMember,
+  revokeInvite,
+  revokePublicShare,
+  setMemberRole,
+} from '../api.js';
 import { notifyError } from '../notify.js';
 
 const ROLES = [
@@ -25,6 +33,7 @@ const ROLES = [
 ];
 
 const inviteUrl = (token) => `${window.location.origin}/invite/${token}`;
+const shareUrl = (token) => `${window.location.origin}/share/${token}`;
 
 // Manage who can access a project. Owners invite via shareable links and set/remove
 // roles; collaborators see the roster and can leave.
@@ -33,6 +42,7 @@ export default function ShareModal({ opened, project, onClose, onChanged }) {
   const [loading, setLoading] = useState(true);
   const [newRole, setNewRole] = useState('editor');
   const [creating, setCreating] = useState(false);
+  const [publicBusy, setPublicBusy] = useState(false);
 
   async function refresh() {
     setLoading(true);
@@ -61,6 +71,30 @@ export default function ShareModal({ opened, project, onClose, onChanged }) {
       notifyError(err, 'Could not create invite');
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function makePublicLink() {
+    setPublicBusy(true);
+    try {
+      await createPublicShare(project.id);
+      refresh();
+    } catch (err) {
+      notifyError(err, 'Could not create public link');
+    } finally {
+      setPublicBusy(false);
+    }
+  }
+
+  async function removePublicLink() {
+    setPublicBusy(true);
+    try {
+      await revokePublicShare(project.id);
+      refresh();
+    } catch (err) {
+      notifyError(err, 'Could not revoke public link');
+    } finally {
+      setPublicBusy(false);
     }
   }
 
@@ -167,6 +201,72 @@ export default function ShareModal({ opened, project, onClose, onChanged }) {
                     </Paper>
                   ))}
                 </Stack>
+              )}
+              <Divider />
+
+              <Text size="sm" fw={600}>
+                Public link
+              </Text>
+              <Text size="xs" c="dimmed">
+                Anyone with this link can view tasks, statuses, due dates and labels — no sign-in.
+                Comments, activity and members stay private.
+              </Text>
+              {data.publicShare ? (
+                <Paper withBorder p="xs" radius="md" bg="dark.7">
+                  <Group justify="space-between" wrap="nowrap">
+                    <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
+                      <Badge
+                        size="xs"
+                        variant="light"
+                        color="teal"
+                        leftSection={<Globe size={11} />}
+                      >
+                        public
+                      </Badge>
+                      <TextInput
+                        readOnly
+                        size="xs"
+                        value={shareUrl(data.publicShare.token)}
+                        style={{ flex: 1, minWidth: 0 }}
+                        onFocus={(e) => e.currentTarget.select()}
+                      />
+                    </Group>
+                    <Group gap={4} wrap="nowrap">
+                      <CopyButton value={shareUrl(data.publicShare.token)}>
+                        {({ copied, copy }) => (
+                          <ActionIcon
+                            variant="subtle"
+                            color={copied ? 'teal' : 'gray'}
+                            aria-label="Copy public link"
+                            onClick={copy}
+                          >
+                            {copied ? <Check size={15} /> : <Copy size={15} />}
+                          </ActionIcon>
+                        )}
+                      </CopyButton>
+                      <ActionIcon
+                        variant="subtle"
+                        color="red"
+                        aria-label="Revoke public link"
+                        loading={publicBusy}
+                        onClick={removePublicLink}
+                      >
+                        <Trash2 size={15} />
+                      </ActionIcon>
+                    </Group>
+                  </Group>
+                </Paper>
+              ) : (
+                <Group>
+                  <Button
+                    variant="light"
+                    leftSection={<Globe size={15} />}
+                    loading={publicBusy}
+                    onClick={makePublicLink}
+                  >
+                    Create public link
+                  </Button>
+                </Group>
               )}
               <Divider />
             </>
