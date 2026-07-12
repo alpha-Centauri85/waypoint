@@ -247,3 +247,24 @@ CREATE TABLE IF NOT EXISTS project_invites (
   accepted_by INTEGER REFERENCES users(id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_project_invites_project ON project_invites(project_id);
+
+-- In-app notifications (roadmap 20). Currently populated by the due-date reminder
+-- sweep (models/notifications.js): one row per user per due/overdue task. Both
+-- task_id and project_id cascade — a reminder is meaningless once its task/project
+-- is gone. The UNIQUE index is the dedupe key so the periodic sweep is idempotent
+-- (INSERT OR IGNORE): one notification per (user, task, type, due_date), so a
+-- task yields a single reminder for a given due date and re-runs don't spam.
+CREATE TABLE IF NOT EXISTS notifications (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  task_id    INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
+  project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+  type       TEXT NOT NULL,
+  message    TEXT NOT NULL,
+  due_date   TEXT,
+  read_at    TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_notifications_dedupe
+  ON notifications(user_id, task_id, type, due_date);

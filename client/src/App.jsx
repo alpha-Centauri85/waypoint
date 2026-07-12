@@ -4,6 +4,7 @@ import {
   Button,
   Center,
   Container,
+  Group,
   Loader,
   MantineProvider,
   Menu,
@@ -16,6 +17,7 @@ import { theme } from './theme.js';
 import { getMe, logout } from './api.js';
 import { StatusesProvider } from './statuses.jsx';
 import Logo from './components/Logo.jsx';
+import NotificationBell from './components/NotificationBell.jsx';
 import AuthForm from './components/AuthForm.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import SettingsScreen from './components/SettingsScreen.jsx';
@@ -80,6 +82,10 @@ export default function App() {
             onSettings={() => setView('settings')}
             onModules={() => setView('modules')}
             onTemplates={() => setView('templates')}
+            onOpenProject={(id) => {
+              setFocusProjectId(id);
+              setView('dashboard');
+            }}
           >
             {view === 'settings' ? (
               <SettingsScreen />
@@ -102,7 +108,16 @@ export default function App() {
 }
 
 // The signed-in shell: a sticky brand header over the working area.
-function AppFrame({ user, onLogout, onHome, onSettings, onModules, onTemplates, children }) {
+function AppFrame({
+  user,
+  onLogout,
+  onHome,
+  onSettings,
+  onModules,
+  onTemplates,
+  onOpenProject,
+  children,
+}) {
   return (
     <Box mih="100vh" bg="dark.7">
       <Box
@@ -124,34 +139,37 @@ function AppFrame({ user, onLogout, onHome, onSettings, onModules, onTemplates, 
         <UnstyledButton onClick={onHome} aria-label="Waypoint home">
           <Logo size={26} />
         </UnstyledButton>
-        <Menu shadow="md" width={200} position="bottom-end">
-          <Menu.Target>
-            <Button
-              variant="subtle"
-              color="gray"
-              size="sm"
-              rightSection={<ChevronDown size={15} />}
-            >
-              <Text size="sm" c="dark.1">
-                {user.email}
-              </Text>
-            </Button>
-          </Menu.Target>
-          <Menu.Dropdown>
-            <Menu.Item leftSection={<LayoutTemplate size={15} />} onClick={onTemplates}>
-              Templates
-            </Menu.Item>
-            <Menu.Item leftSection={<Boxes size={15} />} onClick={onModules}>
-              Module library
-            </Menu.Item>
-            <Menu.Item leftSection={<SettingsIcon size={15} />} onClick={onSettings}>
-              Settings
-            </Menu.Item>
-            <Menu.Item leftSection={<LogOut size={15} />} onClick={onLogout}>
-              Log out
-            </Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
+        <Group gap="xs">
+          <NotificationBell onOpenProject={onOpenProject} />
+          <Menu shadow="md" width={200} position="bottom-end">
+            <Menu.Target>
+              <Button
+                variant="subtle"
+                color="gray"
+                size="sm"
+                rightSection={<ChevronDown size={15} />}
+              >
+                <Text size="sm" c="dark.1">
+                  {user.email}
+                </Text>
+              </Button>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item leftSection={<LayoutTemplate size={15} />} onClick={onTemplates}>
+                Templates
+              </Menu.Item>
+              <Menu.Item leftSection={<Boxes size={15} />} onClick={onModules}>
+                Module library
+              </Menu.Item>
+              <Menu.Item leftSection={<SettingsIcon size={15} />} onClick={onSettings}>
+                Settings
+              </Menu.Item>
+              <Menu.Item leftSection={<LogOut size={15} />} onClick={onLogout}>
+                Log out
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        </Group>
       </Box>
 
       <Container size="xl" py="xl">

@@ -19,6 +19,7 @@ import tasksRouter from './routes/tasks.js';
 import templatesRouter from './routes/templates.js';
 import subtasksRouter from './routes/subtasks.js';
 import activitiesRouter from './routes/activities.js';
+import notificationsRouter from './routes/notifications.js';
 import commentsRouter from './routes/comments.js';
 import membersRouter from './routes/members.js';
 import invitesRouter from './routes/invites.js';
@@ -90,6 +91,7 @@ export function createApp() {
   app.use('/api/search', searchRouter);
   app.use('/api/statuses', statusesRouter);
   app.use('/api/activities', activitiesRouter);
+  app.use('/api/notifications', notificationsRouter);
   app.use('/api/templates', templatesRouter);
   app.use('/api/projects', projectsRouter);
   app.use('/api/projects/:projectId/members', membersRouter);
